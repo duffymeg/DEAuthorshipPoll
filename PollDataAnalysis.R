@@ -45,17 +45,13 @@ Interdisciplinarity <-
   summarise(n=n()) %>%
   mutate(rel.freq = round(100 * n/sum(n), 0))
 
-kable(Interdisciplinarity)
 
-#Failed attempt to get it to sort the table in Likert scale order:
-Interdisciplinarity$Numeric <-
-  ifelse(Interdisciplinarity$Interdisciplinary == "Always", "5",
-         ifelse(Interdisciplinarity$Interdisciplinary == "Never", "1",
-                ifelse(Interdisciplinarity$Interdisciplinary == "Sometimes", "3",
-                       ifelse(Interdisciplinarity$Interdisciplinary == "Often", "4","2"
-                ))))
-  
-kable(Interdisciplinarity[order(Interdisciplinarity$Numeric,na.last=NA)])
+Reorder <- function(x, ordering=c(1, 3, 5, 4, 2))
+    factor(x, levels(x)[ordering])
+
+Interdisciplinarity$Interdisciplinary <- Reorder(Interdisciplinarity$Interdisciplinary)
+
+kable(Interdisciplinarity)
 
 
 YearsPostPhD <-
@@ -65,6 +61,7 @@ YearsPostPhD <-
   summarise(n=n()) %>%
   mutate(rel.freq = round(100 * n/sum(n), 0))
 
+# reuse `Reorder` function here but with a different `ordering` argument
 kable(YearsPostPhD)
 #Another one I'll want to reorder once I've figured that out.  
 
