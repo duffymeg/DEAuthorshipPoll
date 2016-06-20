@@ -17,7 +17,6 @@ library(rmarkdown)
 library(pander)
 
 colnames(polldata)
-as.factor(polldata$LastSenior01)
 
 # First, get overall info on respondents 
 PrimaryResearchArea <-
@@ -45,14 +44,12 @@ Interdisciplinarity <-
   summarise(n=n()) %>%
   mutate(rel.freq = round(100 * n/sum(n), 0))
 
-
 Reorder <- function(x, ordering=c(1, 3, 5, 4, 2))
     factor(x, levels(x)[ordering])
 
 Interdisciplinarity$Interdisciplinary <- Reorder(Interdisciplinarity$Interdisciplinary)
 
 kable(Interdisciplinarity)
-
 
 YearsPostPhD <-
   polldata %>%
@@ -61,10 +58,13 @@ YearsPostPhD <-
   summarise(n=n()) %>%
   mutate(rel.freq = round(100 * n/sum(n), 0))
 
-# reuse `Reorder` function here but with a different `ordering` argument
-kable(YearsPostPhD)
-#Another one I'll want to reorder once I've figured that out.  
+Reorder <- function(x, ordering=c(2,6,3,4,5,1,7))
+  factor(x, levels(x)[ordering])
 
+YearsPostPhD$YearssincePhD <- Reorder(YearsPostPhD$YearssincePhD)
+
+kable(YearsPostPhD)
+#This one has problem of rendering as dates instead of year ranges. Need to fix that.
 
 Continent <-
   polldata %>%
