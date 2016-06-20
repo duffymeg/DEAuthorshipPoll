@@ -19,14 +19,13 @@ Who is the last author on a paper? Is it the person who did the least work? Or i
 
 {add more here on literature and what others have done on similar topics -- see Evernote file for more on that}
 
-Thinking about this topic as we were settling on authorship order for a manuscript recently led me to post a series of tweets where I mused about authorship practices in ecology:  
-https://twitter.com/duffy_ma/status/710917668446928896  
-which then led me to do a poll on Dynamic Ecology related to the topic:  
-https://dynamicecology.wordpress.com/2016/04/06/poll-what-are-your-views-on-last-and-corresponding-authorship-in-ecology/  
+Thinking about this topic as we were settling on authorship order for a manuscript recently led me to post [a series of tweets where I mused about authorship practices in ecology](https://twitter.com/duffy_ma/status/710917668446928896 )
+which then led me to do [a poll on Dynamic Ecology related to the topic](https://dynamicecology.wordpress.com/2016/04/06/poll-what-are-your-views-on-last-and-corresponding-authorship-in-ecology/).
 The poll was developed with input from Alex Bond, Linda Campbell, Kathy Cottingham, and Andrea Kirkwood, who all helped me think through what to ask about and how to phrase the questions and answer options. Many thanks to them for their help! And, while I'm doing acknowledgments, Auriel Fournier provided R help that got me over some key hurdles. Finally, this poll was confirmed as exempt from ongoing IRB review (UMich IRB #: HUM00114140). 
 
 ## The poll
 The poll had four main questions:  
+
 1. For ecology papers, do you consider the last author to be the senior author?  
 2. Which of the following statements most closely matches the current norms in ecology in terms of who is corresponding author?  
 3. Which of the following statements would be best practice in terms of who is corresponding author?  
@@ -38,35 +37,45 @@ The poll first appeared on 6 April 2016 and ran for two weeks.
 
 ## Data manipulation
 Four blank entries were deleted. I am a bad person and used excel to add in numeric codes for the different answers. The key is:  
+
 For the question about whether last author is the senior author:  
+```
 1 = No  
 2 = It depends, but probably no  
 3 = Not sure, but probably no  
 4 = Not sure, but probably yes  
 5 = It depends, but probably yes  
 6 = Yes  
+```
 
 For the question about current corresponding author practices:  
+```
 1 = The corresponding author is the person that has taken responsibility for fielding questions about the paper post-publication  
 2 = The corresponding author is the person with the most stable contact info and/or internet access  
 3 = The corresponding author is usually the person who uploaded the files (usually the first author)  
 4 = The corresponding author is usually the senior author  
 5 = The corresponding author uploaded the files, managed the revisions and wrote the response to reviewers, and took responsibility for the paper after publication  
+```
  
 For the question about best corresponding author practices:  
+```
 1 = The corresponding author should be the person that has taken responsibility for fielding questions about the paper post-publication  
 2 = The corresponding author should be the person with the most stable contact info and/or internet access  
-3 = The corresponding author should be whichever person uploaded the files (usually the first author)  
+3 = The corresponding author should be whichever person uploaded the files (usually the first author)
 4 = The corresponding author should be the senior author  
 5 = The corresponding author should be the person who uploaded the files, managed the revisions and wrote the response to reviewers, and took responsibility for the paper after publication  
+```
 
 For the question about the CV statement:  
+```
 1 = No  
 2 = I have never seen this, but would probably not pay attention to it  
 3 = I have never seen this, but would probably pay attention to it  
 4 = Yes  
+```
 
 For the question about research area:  
+```
 1 = Ecology (primarily field-based)  
 2 = Ecology (primarily wet-lab based, including molecular ecology)  
 3 = Ecology (primarily computational-based)  
@@ -74,19 +83,25 @@ For the question about research area:
 5 = Evolutionary biology (primarily organismal)  
 6 = Biology other than EEB  
 7 = Outside biology  
+```
 
 For the basic vs. applied question:  
+```
 1 = basic  
 2 = applied  
+```
 
 For the interdisciplinarity question:  
+```
 1 = Never  
 2 = Rarely  
 3 = Sometimes  
 4 = Often  
 5 = Always  
+```
 
 Years since PhD  
+```
 1 = 0 (current students and people without a PhD should choose this)  
 2 = 1-5  
 3 = 6-10  
@@ -94,25 +109,30 @@ Years since PhD
 5 = 16-20  
 6 = >20  
 7 = I do not have a PhD and am not a current student  
+```
 
 Where live?  
+```
 1 = Africa  
 2 = Asia  
 3 = Australia  
 4 = Europe  
 5 = North America  
 6 = South America  
+```
 
 Department:  
+```
 1 = An EEB department (or similar)  
 2 = A biology department  
 3 = A natural resources department (or similar)  
 4 = other  
+```
 
 ## Basic overview of responses
 After removing the four blank responses, there were 1122 responses to the poll. What did the respondents look like?  
 
-```{r}
+```{r, import, message=FALSE, warning=FALSE}
 # Import data
 polldata <- read.csv("AuthorshipPollResults.csv", na.strings=".")
 # load libraries needed to run code
@@ -120,7 +140,9 @@ library(ggplot2)
 library(dplyr)
 library(cowplot)
 library(knitr)
+```
 
+```{r}
 PrimaryResearchArea <-
   polldata %>%
   filter(!is.na(PrimaryResearch)) %>%
@@ -182,7 +204,7 @@ kable(Department)
 ## Results for the four main questions
 
 ### Q1: "For ecology papers, do you consider the last author to be the senior author?"
-```{r}
+```{r, q1-fig}
 LastSeniorSum <- 
   polldata %>%
   filter(!is.na(LastSenior01)) %>%
@@ -221,7 +243,7 @@ lastseniorplot
 ```
 
 ### Q2: "Which of the following statements most closely matches the current norms in ecology in terms of who is corresponding author?"
-```{r}
+```{r, q2-fig}
 CurrentCorrespondingSum <- 
   polldata %>%
   filter(!is.na(CorrespondingCurrent01)) %>%
@@ -255,7 +277,7 @@ currentcorrespondingplot
 ```
 
 ### Q3: "Which of the following statements would be best practice in terms of who is corresponding author?"
-```{r}
+```{r, q3-fig}
 BestCorrespondingSum <- 
   polldata %>%
   filter(!is.na(CorrespondingBest01)) %>%
@@ -291,7 +313,7 @@ bestcorrespondingplot
 
 ### Q4: "If someone includes a statement on his/her CV indicating they have used a first/last author emphasis, do you pay attention to that?"
 
-```{r}
+```{r, q4-fig}
 CVStatementSum <- 
   polldata %>%
   filter(!is.na(CVStatement01)) %>%
