@@ -48,8 +48,7 @@ Reorder <- function(x, ordering=c(1, 3, 5, 4, 2))
     factor(x, levels(x)[ordering])
 
 Interdisciplinarity$Interdisciplinary <- Reorder(Interdisciplinarity$Interdisciplinary)
-
-kable(Interdisciplinarity)
+kable(Interdisciplinarity[order(Interdisciplinarity$Interdisciplinary), ])
 
 YearsPostPhD <-
   polldata %>%
