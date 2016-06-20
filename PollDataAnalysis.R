@@ -44,7 +44,7 @@ Interdisciplinarity <-
   summarise(n=n()) %>%
   mutate(rel.freq = round(100 * n/sum(n), 0))
 
-Reorder <- function(x, ordering=c(1, 3, 5, 4, 2))
+Reorder <- function(x, ordering=c("Always", "Often", "Sometimes", "Rarely", "Never"))
     factor(x, levels(x)[ordering])
 
 Interdisciplinarity$Interdisciplinary <- Reorder(Interdisciplinarity$Interdisciplinary)
