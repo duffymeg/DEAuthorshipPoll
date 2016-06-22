@@ -21,7 +21,7 @@ Who is the last author on a paper? Is it the person who did the least work? Or i
 
 Thinking about this topic as we were settling on authorship order for a manuscript recently led me to post [a series of tweets where I mused about authorship practices in ecology](https://twitter.com/duffy_ma/status/710917668446928896 )
 which then led me to do [a poll on Dynamic Ecology related to the topic](https://dynamicecology.wordpress.com/2016/04/06/poll-what-are-your-views-on-last-and-corresponding-authorship-in-ecology/).
-The poll was developed with input from Alex Bond, Linda Campbell, Kathy Cottingham, and Andrea Kirkwood, who all helped me think through what to ask about and how to phrase the questions and answer options. Many thanks to them for their help! And, while I'm doing acknowledgments, Auriel Fournier and Jaime Ashander provided R help that got me over some key hurdles. Finally, this poll was confirmed as exempt from ongoing IRB review (UMich IRB #: HUM00114140). 
+The poll was developed with input from Alex Bond, Linda Campbell, Kathy Cottingham, and Andrea Kirkwood, who all helped me think through what to ask about and how to phrase the questions and answer options. Many thanks to them for their help! And, while I'm doing acknowledgments, Auriel Fournier, Jaime Ashander, and Rayna Harris provided R help that got me over some key hurdles. Finally, this poll was confirmed as exempt from ongoing IRB review (UMich IRB #: HUM00114140). 
 
 ## The poll
 The poll had four main questions:  
@@ -140,6 +140,8 @@ library(ggplot2)
 library(dplyr)
 library(cowplot)
 library(knitr)
+require(likert)
+library(reshape2)
 ```
 
 ```{r}
@@ -352,3 +354,102 @@ save_plot("CVstatementplot.jpg", CVstatementplot)
 CVstatementplot
 ```
 
+## Looking at cross-tabs
+
+### Does whether people view the last author as the senior author vary based on age, country, research area, and/or department?
+
+```{r}
+# first, make a young vs. old variable
+polldata$youngold <- ifelse(polldata$PhD01 < 3, "young",
+                            ifelse(polldata$PhD01 == 3, "middle",
+                            ifelse(polldata$PhD01>3,"old","neither"
+                                   )))
+
+# the above is putting everyone within 5 years of PhD in the "young" category, and everyone 11 or more years post-PhD in the "old" category.
+# I'm sure I'll catch some flack for those category names. :)
+
+## next, making a "molecular" variable
+polldata$molecular <- ifelse(polldata$PrimaryResearch01 == 2 | polldata$PrimaryResearch == 4, "molecular",
+                             ifelse(polldata$PrimaryResearch01 == 1 | polldata$PrimaryResearch == 5,"organismal","other"
+                             ))
+
+# next, make a variable for department type
+polldata$depttype <- ifelse(polldata$Dept01 == 1, "eeb",
+                            ifelse(polldata$Dept01 == 2, "bio",
+                            ifelse(polldata$Dept01 == 3, "natres","other"
+                            )))
+
+## subsetting only the last author data, but first filter by the grouping variables of interest
+## then renaming factors, renaming question
+lastdata <-
+  polldata %>%
+  filter(CorrespondingBest01 != "NA", LastSenior != "NA", 
+         WhereLive != "NA", BasicApplied != "NA", 
+         depttype != "NA", PrimaryResearch != "NA") %>% 
+  select(LastSenior) 
+
+# order the data
+lastdata$LastSenior <- factor(lastdata$LastSenior, 
+                                      c("No",
+                                        "Not sure, but probably no",
+                                        "It depends, but probably no",
+                                        "It depends, but probably yes",
+                                        "Not sure, but probably yes",
+                                        "Yes"))
+
+# changing the column name to the question
+colnames(lastdata)[1] <- "Is the last author the senior author?"
+
+## subsetting the likert data AND the grouping variables
+lastdata_grouping <-
+  polldata %>%
+  filter(CorrespondingBest01 != "NA", LastSenior != "NA", 
+         WhereLive != "NA", BasicApplied != "NA", 
+         depttype != "NA", PrimaryResearch != "NA") %>%
+  select(molecular, youngold, 
+         WhereLive, BasicApplied, 
+         depttype, PrimaryResearch) 
+
+## ordering the grouping factors
+## then renaming the primary research responses
+lastdata_grouping$molecular <- factor(lastdata_grouping$molecular, 
+                                            c("molecular",
+                                              "organismal", 
+                                              "other"))
+lastdata_grouping$youngold <- factor(lastdata_grouping$youngold, 
+                                          c("young",
+                                            "middle", 
+                                            "old"))
+levels(lastdata_grouping$PrimaryResearch)
+levels(lastdata_grouping$PrimaryResearch) <- c("Biology Other", "Comp Ecol", "Field Ecol", "Lab Mol Ecol", "Mol Evol", "Organismal Evol", "Other")
+```
+
+```{r, q1-crosstabfig}
+likert_12 <- likert(lastdata, grouping = lastdata_grouping$youngold)
+plot(likert_12)
+likert_22 <- likert(lastdata, grouping = lastdata_grouping$WhereLive)
+plot(likert_22)
+
+
+
+likert_32 <- likert(lastdata, grouping = lastdata_grouping$depttype)
+plot(likert_32)
+likert_42 <- likert(lastdata, grouping = lastdata_grouping$BasicApplied)
+plot(likert_42)
+likert_52 <- likert(lastdata, grouping = lastdata_grouping$PrimaryResearch)
+plot(likert_52)
+likert_62 <- likert(lastdata, grouping = lastdata_grouping$molecular)
+plot(likert_62)
+
+likert_12.mpg <- plot(likert_12)
+likert_22.mpg <- plot(likert_22)
+likert_32.mpg <- plot(likert_32)
+likert_42.mpg <- plot(likert_42)
+likert_52.mpg <- plot(likert_52)
+likert_62.mpg <- plot(likert_62)
+lastplotgrid <- plot_grid(likert_12.mpg, likert_22.mpg, likert_32.mpg, likert_42.mpg, likert_52.mpg, likert_62.mpg, 
+          labels = c("A", "B", "C", "D", "E", "F"), ncol = 2, nrow = 3,
+          rel_widths = c(0.5, 0.5))
+
+save_plot("lastplotgrid.jpg", lastplotgrid, base_width = 17, base_height = 11)
+```
