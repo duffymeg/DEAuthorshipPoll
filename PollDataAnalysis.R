@@ -8,6 +8,9 @@
 # Import data
 polldata <- read.csv("AuthorshipPollResults.csv", na.strings=".")
 
+#require(devtools)
+#install_github('jbryer/likert', force = TRUE)
+
 # load libraries needed to run code below
 library(ggplot2)
 library(dplyr)
@@ -15,6 +18,10 @@ library(cowplot)
 library(knitr)
 library(rmarkdown)
 library(pander)
+require(likert)
+# ls("package:likert")
+# detach("package:reshape", unload=TRUE) #just incase its loaded
+library("reshape2")
 
 colnames(polldata)
 
@@ -460,6 +467,205 @@ LastSeniorSumSA
 #South America (but with caution of relatively small sample size): 93% (37%)
 
 
+# Code from Rayna Harris that looks at Likert-style data and shows responses
+## subsetting only the likert data, but first filter by the grouping variables of interest
+interdisc <-
+  polldata %>%
+  filter(Interdisciplinary != "NA", LastSenior != "NA", WhereLive != "NA", BasicApplied != "NA") %>% 
+  select(Interdisciplinary) 
+
+## ordering the factors
+interdisc$Interdisciplinary <- factor(interdisc$Interdisciplinary, 
+                                      c("Never",
+                                        "Rarely", 
+                                        "Sometimes", 
+                                        "Often",
+                                        "Always"))
+
+## subsetting the likert data AND the grouping variables
+interdisc_grouping <-
+  polldata %>%
+  filter(Interdisciplinary != "NA", LastSenior != "NA", WhereLive != "NA", BasicApplied != "NA") %>%
+  select(LastSenior, youngold, WhereLive, BasicApplied) 
+
+## ordering the grouping factors
+interdisc_grouping$LastSenior <- factor(interdisc_grouping$LastSenior, 
+                                        c("No",
+                                          "It depends, but probably no", 
+                                          "Not sure, but probably no", 
+                                          "Not sure, but probably yes",
+                                          "It depends, but probably yes",
+                                          "Yes"))
+interdisc_grouping$youngold <- factor(interdisc_grouping$youngold, 
+                                      c("young",
+                                        "middle", 
+                                        "old"))
+
+## individual plots!
+likert_1 <- likert(interdisc, grouping = interdisc_grouping$youngold)
+plot(likert_1)
+
+likert_2 <- likert(interdisc, grouping = interdisc_grouping$WhereLive)
+plot(likert_2)
+
+likert_3 <- likert(interdisc, grouping = interdisc_grouping$LastSenior)
+plot(likert_3) 
+
+likert_4 <- likert(interdisc, grouping = interdisc_grouping$BasicApplied)
+plot(likert_4)
+
+## cowplot!!
+likert_1.mpg <- plot(likert_1)
+likert_2.mpg <- plot(likert_2)
+likert_3.mpg <- plot(likert_3)
+likert_4.mpg <- plot(likert_4)
+likertplot1 <- plot_grid(likert_1.mpg, likert_2.mpg, likert_3.mpg, likert_4.mpg, labels = c("A", "B", "C", "D"), ncol = 2)
+
+save_plot("likertplot1.jpg", likertplot1)
+#Hmm, the above plot looks pretty awful (in terms of the way things are arranged), but, since it's not the main plot of interest, I'm moving on with Rayna's code anyway
+
+## subsetting only the corresponding author data, but first filter by the grouping variables of interest
+## then renaming factors, renaming question
+corresponding <-
+  polldata %>%
+  filter(CorrespondingBest01 != "NA", LastSenior != "NA", 
+         WhereLive != "NA", BasicApplied != "NA", 
+         depttype != "NA", PrimaryResearch != "NA") %>% 
+  select(CorrespondingBest01) 
+corresponding$CorrespondingBest01 <- factor(corresponding$CorrespondingBest01, 
+                                            c("1", "2", "3", "4", "5"))
+levels(corresponding$CorrespondingBest01) <- c("Fields Questions", "Most Stable", "Uploaded Files", "Senior Author", "Revisions, Reviews")
+colnames(corresponding)[1] <- "Who is the Corresponding Author?"
+
+## subsetting the likert data AND the grouping variables
+corresponding_grouping <-
+  polldata %>%
+  filter(CorrespondingBest01 != "NA", LastSenior != "NA", 
+         WhereLive != "NA", BasicApplied != "NA", 
+         depttype != "NA", PrimaryResearch != "NA") %>%
+  select(LastSenior, youngold, 
+         WhereLive, BasicApplied, 
+         depttype, PrimaryResearch) 
+
+## ordering the grouping factors
+## then renaming the primary resech responses
+corresponding_grouping$LastSenior <- factor(corresponding_grouping$LastSenior, 
+                                            c("No",
+                                              "It depends, but probably no", 
+                                              "Not sure, but probably no", 
+                                              "Not sure, but probably yes",
+                                              "It depends, but probably yes",
+                                              "Yes"))
+corresponding_grouping$youngold <- factor(corresponding_grouping$youngold, 
+                                          c("young",
+                                            "middle", 
+                                            "old"))
+levels(corresponding_grouping$PrimaryResearch)
+levels(corresponding_grouping$PrimaryResearch) <- c("Biology Other", "EEB Comp", "EEB Field", "EEB Mol Ecol", "Evol Mol", "Evol Organismal", "Other")
+
+## plots##
+likert_11 <- likert(corresponding, grouping = corresponding_grouping$youngold)
+plot(likert_11)
+likert_21 <- likert(corresponding, grouping = corresponding_grouping$LastSenior)
+plot(likert_21)
+likert_31 <- likert(corresponding, grouping = corresponding_grouping$BasicApplied)
+plot(likert_31)
+likert_41 <- likert(corresponding, grouping = corresponding_grouping$WhereLive)
+plot(likert_41)
+likert_51 <- likert(corresponding, grouping = corresponding_grouping$depttype)
+plot(likert_51)
+likert_61 <- likert(corresponding, grouping = corresponding_grouping$PrimaryResearch)
+plot(likert_61)
+
+## cowplot !
+likert_11.mpg <- plot(likert_11)
+likert_21.mpg <- plot(likert_21)
+likert_31.mpg <- plot(likert_31)
+likert_41.mpg <- plot(likert_41)
+likert_51.mpg <- plot(likert_51)
+likert_61.mpg <- plot(likert_61)
+plot_grid(likert_11.mpg, likert_21.mpg, likert_31.mpg, likert_41.mpg, likert_51.mpg, likert_61.mpg, 
+          labels = c("A", "B", "C", "D", "E", "F"), ncol = 2, nrow = 3,
+          rel_widths = c(0.4, 0.6))
+
+
+# Updating the above to focus on question 1 instead (related to last == senior)
+
+## first, making a "molecular" variable
+polldata$molecular <- ifelse(polldata$PrimaryResearch01 == 2 | polldata$PrimaryResearch == 4, "molecular",
+                             ifelse(polldata$PrimaryResearch01 == 1 | polldata$PrimaryResearch == 5,"organismal","other"
+                             ))
+
+## subsetting only the last author data, but first filter by the grouping variables of interest
+## then renaming factors, renaming question
+lastdata <-
+  polldata %>%
+  filter(CorrespondingBest01 != "NA", LastSenior != "NA", 
+         WhereLive != "NA", BasicApplied != "NA", 
+         depttype != "NA", PrimaryResearch != "NA") %>% 
+  select(LastSenior) 
+
+# order the data
+lastdata$LastSenior <- factor(lastdata$LastSenior, 
+                                      c("No",
+                                        "Not sure, but probably no",
+                                        "It depends, but probably no",
+                                        "It depends, but probably yes",
+                                        "Not sure, but probably yes",
+                                        "Yes"))
+
+# changing the column name to the question
+colnames(lastdata)[1] <- "Is the last author the senior author?"
+
+## subsetting the likert data AND the grouping variables
+lastdata_grouping <-
+  polldata %>%
+  filter(CorrespondingBest01 != "NA", LastSenior != "NA", 
+         WhereLive != "NA", BasicApplied != "NA", 
+         depttype != "NA", PrimaryResearch != "NA") %>%
+  select(molecular, youngold, 
+         WhereLive, BasicApplied, 
+         depttype, PrimaryResearch) 
+
+## ordering the grouping factors
+## then renaming the primary research responses
+lastdata_grouping$molecular <- factor(lastdata_grouping$molecular, 
+                                            c("molecular",
+                                              "organismal", 
+                                              "other"))
+lastdata_grouping$youngold <- factor(lastdata_grouping$youngold, 
+                                          c("young",
+                                            "middle", 
+                                            "old"))
+levels(lastdata_grouping$PrimaryResearch)
+levels(lastdata_grouping$PrimaryResearch) <- c("Biology Other", "Comp Ecol", "Field Ecol", "Lab Mol Ecol", "Mol Evol", "Organismal Evol", "Other")
+
+## plots##
+likert_12 <- likert(lastdata, grouping = lastdata_grouping$youngold)
+plot(likert_12)
+likert_22 <- likert(lastdata, grouping = lastdata_grouping$WhereLive)
+plot(likert_22)
 
 
 
+likert_32 <- likert(lastdata, grouping = lastdata_grouping$depttype)
+plot(likert_32)
+likert_42 <- likert(lastdata, grouping = lastdata_grouping$BasicApplied)
+plot(likert_42)
+likert_52 <- likert(lastdata, grouping = lastdata_grouping$PrimaryResearch)
+plot(likert_52)
+likert_62 <- likert(lastdata, grouping = lastdata_grouping$molecular)
+plot(likert_62)
+
+likert_12.mpg <- plot(likert_12)
+likert_22.mpg <- plot(likert_22)
+likert_32.mpg <- plot(likert_32)
+likert_42.mpg <- plot(likert_42)
+likert_52.mpg <- plot(likert_52)
+likert_62.mpg <- plot(likert_62)
+lastplotgrid <- plot_grid(likert_12.mpg, likert_22.mpg, likert_32.mpg, likert_42.mpg, likert_52.mpg, likert_62.mpg, 
+          labels = c("A", "B", "C", "D", "E", "F"), ncol = 2, nrow = 3,
+          rel_widths = c(0.5, 0.5))
+
+save_plot("lastplotgrid.jpg", lastplotgrid, base_width = 17, base_height = 11)
+# would be nice if could remove legends from A through D (or even E)
