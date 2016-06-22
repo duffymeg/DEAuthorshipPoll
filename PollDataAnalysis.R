@@ -645,9 +645,6 @@ likert_12 <- likert(lastdata, grouping = lastdata_grouping$youngold)
 plot(likert_12)
 likert_22 <- likert(lastdata, grouping = lastdata_grouping$WhereLive)
 plot(likert_22)
-
-
-
 likert_32 <- likert(lastdata, grouping = lastdata_grouping$depttype)
 plot(likert_32)
 likert_42 <- likert(lastdata, grouping = lastdata_grouping$BasicApplied)
@@ -657,15 +654,16 @@ plot(likert_52)
 likert_62 <- likert(lastdata, grouping = lastdata_grouping$molecular)
 plot(likert_62)
 
-likert_12.mpg <- plot(likert_12)
-likert_22.mpg <- plot(likert_22)
-likert_32.mpg <- plot(likert_32)
-likert_42.mpg <- plot(likert_42)
+likert_12.mpg <- plot(likert_12) + theme(legend.position = "none")
+likert_22.mpg <- plot(likert_22) + theme(legend.position = "none")
+likert_32.mpg <- plot(likert_32) + theme(legend.position = "none")
+likert_42.mpg <- plot(likert_42) + theme(legend.position = "none")
 likert_52.mpg <- plot(likert_52)
 likert_62.mpg <- plot(likert_62)
 lastplotgrid <- plot_grid(likert_12.mpg, likert_22.mpg, likert_32.mpg, likert_42.mpg, likert_52.mpg, likert_62.mpg, 
           labels = c("A", "B", "C", "D", "E", "F"), ncol = 2, nrow = 3,
-          rel_widths = c(0.5, 0.5))
+          rel_widths = c(0.5, 0.5),
+          rel_heights = c(0.3, 0.3, 0.35))
 
 save_plot("lastplotgrid.jpg", lastplotgrid, base_width = 17, base_height = 11)
-# would be nice if could remove legends from A through D (or even E)
+# would be ideal if could get better aligned
