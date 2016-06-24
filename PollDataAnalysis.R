@@ -22,6 +22,7 @@ require(likert)
 # ls("package:likert")
 # detach("package:reshape", unload=TRUE) #just incase its loaded
 library("reshape2")
+library(magrittr)
 
 colnames(polldata)
 
@@ -666,4 +667,123 @@ lastplotgrid <- plot_grid(likert_12.mpg, likert_22.mpg, likert_32.mpg, likert_42
           rel_heights = c(0.3, 0.3, 0.35))
 
 save_plot("lastplotgrid.jpg", lastplotgrid, base_width = 17, base_height = 11)
-# would be ideal if could get better aligned
+# would be ideal if could get better aligned, but I think this is tricky to do
+
+## Now looking at question 4 and how responses there relate to those for question 1
+
+## subsetting only the statement data, but first filter by the grouping variables of interest
+## then renaming factors, renaming question
+statementdata <-
+  polldata %>%
+  filter(CVStatement01 != "NA", LastSenior != "NA", 
+         WhereLive != "NA", BasicApplied != "NA", 
+         depttype != "NA", PrimaryResearch != "NA") %>% 
+  select(CVStatement) 
+
+# order the data
+statementdata$CVStatement <- factor(statementdata$CVStatement, 
+                              c("No",
+                                "I have never seen this, but would probably not pay attention to it",
+                                "I have never seen this, but would probably pay attention to it",
+                                "Yes"))
+
+statementdata$CVStatement <- statementdata %>%
+  use_series(CVStatement) %>%
+  plyr::mapvalues(., c("No","I have never seen this, but would probably not pay attention to it","I have never seen this, but would probably pay attention to it","Yes"), c("No","Not seen, no","Not seen, yes","Yes"))
+
+# changing the column name to the question
+colnames(statementdata)[1] <- "Do you pay attention to a CV statement?"
+
+## subsetting the likert data AND the grouping variables
+statementdata_grouping <-
+  polldata %>%
+  filter(CVStatement01 != "NA", LastSenior != "NA", 
+         WhereLive != "NA", BasicApplied != "NA", 
+         depttype != "NA", PrimaryResearch != "NA") %>%
+  select(molecular, youngold, 
+         WhereLive, BasicApplied, 
+         depttype, PrimaryResearch, LastSenior, LastSenior01) 
+
+## ordering the grouping factors
+## then renaming the primary research responses
+statementdata_grouping$molecular <- factor(statementdata_grouping$molecular, 
+                                      c("molecular",
+                                        "organismal", 
+                                        "other"))
+statementdata_grouping$youngold <- factor(statementdata_grouping$youngold, 
+                                     c("young",
+                                       "middle", 
+                                       "old"))
+levels(statementdata_grouping$PrimaryResearch)
+levels(statementdata_grouping$PrimaryResearch) <- c("Biology Other", "Comp Ecol", "Field Ecol", "Lab Mol Ecol", "Mol Evol", "Organismal Evol", "Other")
+statementdata_grouping$LastSenior <- factor(statementdata_grouping$LastSenior, 
+                                            c("No",
+                                              "Not sure, but probably no",
+                                              "It depends, but probably no",
+                                              "It depends, but probably yes",
+                                              "Not sure, but probably yes",
+                                              "Yes"))
+
+statementdata_grouping$LastSeniorYesNo <- ifelse(statementdata_grouping$LastSenior01 < 4, "No", "Yes")
+
+## Plots
+## plots##
+likert_13 <- likert(statementdata, grouping = statementdata_grouping$youngold)
+plot(likert_13)
+likert_23 <- likert(statementdata, grouping = statementdata_grouping$WhereLive)
+plot(likert_23)
+likert_33 <- likert(statementdata, grouping = statementdata_grouping$depttype)
+plot(likert_33)
+likert_43 <- likert(statementdata, grouping = statementdata_grouping$BasicApplied)
+plot(likert_43)
+likert_53 <- likert(statementdata, grouping = statementdata_grouping$PrimaryResearch)
+plot(likert_53)
+likert_63 <- likert(statementdata, grouping = statementdata_grouping$molecular)
+plot(likert_63)
+likert_73 <- likert(statementdata, grouping = statementdata_grouping$LastSenior)
+plot(likert_73)
+likert_83 <- likert(statementdata, grouping = statementdata_grouping$LastSeniorYesNo)
+plot(likert_83)
+
+
+likert_13.mpg <- plot(likert_13) + theme(legend.position = "none")
+likert_23.mpg <- plot(likert_23) + theme(legend.position = "none")
+likert_33.mpg <- plot(likert_33) + theme(legend.position = "none")
+likert_43.mpg <- plot(likert_43) + theme(legend.position = "none")
+likert_53.mpg <- plot(likert_53) + theme(legend.position = "none")
+likert_63.mpg <- plot(likert_63) + theme(legend.position = "none")
+likert_73.mpg <- plot(likert_73) 
+likert_83.mpg <- plot(likert_83) 
+statementplotgrid <- plot_grid(likert_13.mpg, likert_23.mpg, likert_33.mpg, likert_43.mpg, likert_53.mpg, likert_63.mpg, likert_73.mpg, likert_83.mpg,
+                          labels = c("A", "B", "C", "D", "E", "F", "G", "H"), ncol = 2, nrow = 4,
+                          rel_widths = c(0.5, 0.5),
+                          rel_heights = c(0.3, 0.3, 0.35))
+
+save_plot("statementplotgrid.jpg", statementplotgrid, base_width = 17, base_height = 15)
+
+
+# Looking more simply: what if just take the people who said straight "Yes" or "No" to Q1. What are their splits for Q4?
+lastnotsenior <- 
+  polldata %>%
+  subset(LastSenior01 == 1) %>%
+  group_by(CVStatement) %>%
+  summarise(n=n()) %>%
+  mutate(rel.freq = round(100 * n/sum(n), 0))
+
+lastissenior <- 
+  polldata %>%
+  subset(LastSenior01 == 6) %>%
+  filter(!is.na(CVStatement01)) %>%
+  group_by(CVStatement) %>%
+  summarise(n=n()) %>%
+  mutate(rel.freq = round(100 * n/sum(n), 0))
+
+lastunsure <-
+  polldata %>%
+  subset(LastSenior01 > 1 & LastSenior01 < 6) %>%
+  filter(!is.na(CVStatement01)) %>%
+  group_by(CVStatement) %>%
+  summarise(n=n()) %>%
+  mutate(rel.freq = round(100 * n/sum(n), 0))
+
+# To do next: figure out how to plot the above with the Likert package?
