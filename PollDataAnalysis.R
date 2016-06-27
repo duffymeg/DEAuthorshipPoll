@@ -274,7 +274,7 @@ LastSeniorSumOrganismal <-
 
 LastSeniorSumOrganismal
 
-# Whoa! Huge difference in full on "yes" answers:
+# Big difference in full on "yes" answers:
 # molecular-types: 62%
 # organismal/field-types: 39%
 
@@ -329,12 +329,7 @@ LastSeniorSumPhd1 <-
   
   mutate(rel.freq = round(100 * n/sum(n), 0))
 
-# There is an elegant way to do this, I'm sure, but I don't know it and I'm just going
-# with the brute force approach:
-
-
-
-  mutate(rel.freq = round(100 * n/sum(n), 0))
+# I abandoned the above approach after learning about the Likert package
 
 
 # Q1.3: Is there a difference related to home department (with guess that EEB dept folks might have more traditional view)?
@@ -597,13 +592,19 @@ polldata$molecular <- ifelse(polldata$PrimaryResearch01 == 2 | polldata$PrimaryR
                              ifelse(polldata$PrimaryResearch01 == 1 | polldata$PrimaryResearch == 5,"organismal","other"
                              ))
 
+## make an ecology vs. evolution variable:
+polldata$ecoevo <- ifelse(polldata$PrimaryResearch01 < 4, "ecology",
+                             ifelse(polldata$PrimaryResearch01 == 4 | polldata$PrimaryResearch == 5,"evolution","other"
+                             ))
+
+
 ## subsetting only the last author data, but first filter by the grouping variables of interest
 ## then renaming factors, renaming question
 lastdata <-
   polldata %>%
   filter(CorrespondingBest01 != "NA", LastSenior != "NA", 
          WhereLive != "NA", BasicApplied != "NA", 
-         depttype != "NA", PrimaryResearch != "NA") %>% 
+         depttype != "NA", PrimaryResearch != "NA", Inter01 != "NA") %>% 
   select(LastSenior) 
 
 # order the data
@@ -623,10 +624,11 @@ lastdata_grouping <-
   polldata %>%
   filter(CorrespondingBest01 != "NA", LastSenior != "NA", 
          WhereLive != "NA", BasicApplied != "NA", 
-         depttype != "NA", PrimaryResearch != "NA") %>%
-  select(molecular, youngold, 
+         depttype != "NA", PrimaryResearch != "NA", Inter01 != "NA") %>%
+  select(molecular, 
          WhereLive, BasicApplied, 
-         depttype, PrimaryResearch) 
+         depttype, PrimaryResearch,
+         ecoevo, Interdisciplinary, YearssincePhD) 
 
 ## ordering the grouping factors
 ## then renaming the primary research responses
@@ -638,36 +640,91 @@ lastdata_grouping$youngold <- factor(lastdata_grouping$youngold,
                                           c("young",
                                             "middle", 
                                             "old"))
-levels(lastdata_grouping$PrimaryResearch)
+lastdata_grouping$Interdisciplinary <- factor(lastdata_grouping$Interdisciplinary, 
+                                     c("Always",
+                                       "Often",
+                                       "Sometimes",
+                                       "Rarely",
+                                       "Never"))
+
 levels(lastdata_grouping$PrimaryResearch) <- c("Biology Other", "Comp Ecol", "Field Ecol", "Lab Mol Ecol", "Mol Evol", "Organismal Evol", "Other")
 
+lastdata_grouping$YearssincePhD <- lastdata_grouping %>%
+  use_series(YearssincePhD) %>%
+  plyr::mapvalues(., c(">20","0 (current students should choose this)","10-Jun","15-Nov", "16-20", "5-Jan", "I do not have a PhD and am not a current student"), c(">20", "0","6-10","11-15", "16-20", "1-5", "no PhD, not student"))
+
+lastdata_grouping$PrimaryResearch <- lastdata_grouping %>%
+  use_series(PrimaryResearch) %>%
+  plyr::mapvalues(., c("Biology other than EEB","Ecology (primarily computational-based)",
+                       "Ecology (primarily field-based)","Ecology (primarily wet-lab based, including molecular ecology)", 
+                       "Evolutionary biology (primarily molecular)", "Evolutionary biology (primarily organismal)", "Outside biology"), 
+                  c("Biology Other", "Comp Ecol","Field Ecol","Lab Mol Ecol", "Mol Evol", "Organismal Evol", "Other"))
+
+
+lastdata_grouping$YearssincePhD <- factor(lastdata_grouping$YearssincePhD, 
+                                     c("0",
+                                       "1-5",
+                                       "6-10",
+                                       "11-15",
+                                       "16-20",
+                                       ">20", 
+                                       "no PhD, not student"))
+
 ## plots##
-likert_12 <- likert(lastdata, grouping = lastdata_grouping$youngold)
-plot(likert_12)
+
+#colnames(lastdata)[1] <- "Is the last author the senior author?"
+#likert_12 <- likert(lastdata, grouping = lastdata_grouping$youngold)
+#plot(likert_12)
+
+colnames(lastdata)[1] <- "Geographic location"
 likert_22 <- likert(lastdata, grouping = lastdata_grouping$WhereLive)
 plot(likert_22)
+colnames(lastdata)[1] <- "Department type"
 likert_32 <- likert(lastdata, grouping = lastdata_grouping$depttype)
 plot(likert_32)
+colnames(lastdata)[1] <- "Basic v. Applied"
 likert_42 <- likert(lastdata, grouping = lastdata_grouping$BasicApplied)
 plot(likert_42)
+colnames(lastdata)[1] <- "Primary Research Area"
 likert_52 <- likert(lastdata, grouping = lastdata_grouping$PrimaryResearch)
 plot(likert_52)
+colnames(lastdata)[1] <- "Molecular vs. Organismal"
 likert_62 <- likert(lastdata, grouping = lastdata_grouping$molecular)
 plot(likert_62)
+colnames(lastdata)[1] <- "Frequency of interdisciplinary research?"
+likert_72 <- likert(lastdata, grouping = lastdata_grouping$Interdisciplinary)
+plot(likert_72)
+colnames(lastdata)[1] <- "Ecology vs. Evolution"
+likert_82 <- likert(lastdata, grouping = lastdata_grouping$ecoevo)
+plot(likert_82)
+colnames(lastdata)[1] <- "Years since PhD"
+likert_92 <- likert(lastdata, grouping = lastdata_grouping$YearssincePhD)
+plot(likert_92)
 
-likert_12.mpg <- plot(likert_12) + theme(legend.position = "none")
-likert_22.mpg <- plot(likert_22) + theme(legend.position = "none")
+likert_92.mpg <- plot(likert_92) + theme(legend.position = "none")
+likert_52.mpg <- plot(likert_52) + theme(legend.position = "none")
+likert_82.mpg <- plot(likert_82) + theme(legend.position = "none")
+likert_62.mpg <- plot(likert_62) + theme(legend.position = "none")
+likert_42.mpg <- plot(likert_42)
 likert_32.mpg <- plot(likert_32) + theme(legend.position = "none")
-likert_42.mpg <- plot(likert_42) + theme(legend.position = "none")
-likert_52.mpg <- plot(likert_52)
-likert_62.mpg <- plot(likert_62)
-lastplotgrid <- plot_grid(likert_12.mpg, likert_22.mpg, likert_32.mpg, likert_42.mpg, likert_52.mpg, likert_62.mpg, 
-          labels = c("A", "B", "C", "D", "E", "F"), ncol = 2, nrow = 3,
-          rel_widths = c(0.5, 0.5),
-          rel_heights = c(0.3, 0.3, 0.35))
+likert_72.mpg <- plot(likert_72)
+likert_22.mpg <- plot(likert_22) + theme(legend.position = "none")
 
-save_plot("lastplotgrid.jpg", lastplotgrid, base_width = 17, base_height = 11)
+lastplotgrid4panelv2 <- plot_grid(likert_92.mpg, likert_52.mpg, likert_32.mpg, likert_42.mpg, 
+                            labels = c("A", "B", "C", "D"), ncol = 1, nrow = 4,
+                            rel_heights = c(0.3, 0.3, 0.2, 0.2))
+
+save_plot("lastplotgrid4panelv2.jpg", lastplotgrid4panelv2, base_width = 8.5, base_height = 15)
+
+lastplotgrid2panelv2 <- plot_grid(likert_22.mpg, likert_72.mpg, 
+                            labels = c("A", "B"), ncol = 1, nrow = 2,
+                            rel_heights = c(0.5, 0.5))
+
+save_plot("lastplotgrid2panelv2.jpg", lastplotgrid2panelv2, base_width = 8.5, base_height = 10)
+
+
 # would be ideal if could get better aligned, but I think this is tricky to do
+
 
 ## Now looking at question 4 and how responses there relate to those for question 1
 
@@ -763,14 +820,14 @@ save_plot("statementplotgrid.jpg", statementplotgrid, base_width = 17, base_heig
 
 
 # Looking more simply: what if just take the people who said straight "Yes" or "No" to Q1. What are their splits for Q4?
-lastnotsenior <- 
+lastnotseniorsummary <- 
   polldata %>%
   subset(LastSenior01 == 1) %>%
   group_by(CVStatement) %>%
   summarise(n=n()) %>%
   mutate(rel.freq = round(100 * n/sum(n), 0))
 
-lastissenior <- 
+lastisseniorsummary <- 
   polldata %>%
   subset(LastSenior01 == 6) %>%
   filter(!is.na(CVStatement01)) %>%
@@ -778,7 +835,7 @@ lastissenior <-
   summarise(n=n()) %>%
   mutate(rel.freq = round(100 * n/sum(n), 0))
 
-lastunsure <-
+lastunsuresummary <-
   polldata %>%
   subset(LastSenior01 > 1 & LastSenior01 < 6) %>%
   filter(!is.na(CVStatement01)) %>%
@@ -786,4 +843,42 @@ lastunsure <-
   summarise(n=n()) %>%
   mutate(rel.freq = round(100 * n/sum(n), 0))
 
-# To do next: figure out how to plot the above with the Likert package?
+# Figuring out how to plot:
+lastnotsenior <- 
+  polldata %>%
+  subset(LastSenior01 == 1)
+
+lnsstatementdata <-
+  lastnotsenior %>%
+  filter(CVStatement01 != "NA", LastSenior != "NA", 
+         WhereLive != "NA", BasicApplied != "NA", 
+         depttype != "NA", PrimaryResearch != "NA") %>% 
+  select(CVStatement) 
+
+lnsstatementdata$CVStatement <- factor(lnsstatementdata$CVStatement, 
+                                    c("No",
+                                      "I have never seen this, but would probably not pay attention to it",
+                                      "I have never seen this, but would probably pay attention to it",
+                                      "Yes"))
+
+lnsstatementdata$CVStatement <- lnsstatementdata %>%
+  use_series(CVStatement) %>%
+  plyr::mapvalues(., c("No","I have never seen this, but would probably not pay attention to it","I have never seen this, but would probably pay attention to it","Yes"), c("No","Not seen, no","Not seen, yes","Yes"))
+
+colnames(lnsstatementdata)[1] <- "Do you pay attention to a CV statement?"
+
+## subsetting the likert data AND the grouping variables
+lnsstatementdata_grouping <-
+  lastnotsenior %>%
+  filter(CVStatement01 != "NA", LastSenior != "NA", 
+         WhereLive != "NA", BasicApplied != "NA", 
+         depttype != "NA", PrimaryResearch != "NA") %>%
+  select(LastSenior) 
+
+lastnotseniorlikert <- likert(lnsstatementdata, grouping = lnsstatementdata_grouping$LastSenior)
+plot(lastnotseniorlikert)
+
+# Plot above works, but maybe isn't that useful
+
+
+
