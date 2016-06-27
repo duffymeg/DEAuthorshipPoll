@@ -466,12 +466,11 @@ likert_52.mpg <- plot(likert_52) + theme(legend.position = "none")
 likert_42.mpg <- plot(likert_42)
 likert_32.mpg <- plot(likert_32) + theme(legend.position = "none")
 
-lastplotgrid4panel <- plot_grid(likert_92.mpg, likert_52.mpg, likert_42.mpg, likert_32.mpg,
-                            labels = c("A", "B", "C", "D"), ncol = 2, nrow = 2,
-                            rel_widths = c(0.5, 0.5),
-                            rel_heights = c(0.6, 0.4))
+lastplotgrid4panelv2 <- plot_grid(likert_92.mpg, likert_52.mpg, likert_32.mpg, likert_42.mpg, 
+                            labels = c("A", "B", "C", "D"), ncol = 1, nrow = 4,
+                            rel_heights = c(0.3, 0.3, 0.2, 0.2))
 
-save_plot("lastplotgrid4panel.jpg", lastplotgrid4panel, base_width = 17, base_height = 8)
+save_plot("lastplotgrid4panelv2.jpg", lastplotgrid4panelv2, base_width = 8.5, base_height = 15)
 ```
 
 ```{r, q1-2panelcrosstabfig, warning=FALSE}
@@ -479,18 +478,18 @@ colnames(lastdata)[1] <- "Geographic location"
 likert_22 <- likert(lastdata, grouping = lastdata_grouping$WhereLive)
 plot(likert_22)
 
-colnames(lastdata)[1] <- "Frequency of interdisciplinary research?"
+colnames(lastdata)[1] <- "Frequency of interdisciplinary research"
 likert_72 <- likert(lastdata, grouping = lastdata_grouping$Interdisciplinary)
 plot(likert_72)
 
 likert_72.mpg <- plot(likert_72)
 likert_22.mpg <- plot(likert_22) + theme(legend.position = "none")
 
-lastplotgrid2panel <- plot_grid(likert_72.mpg, likert_22.mpg, 
-                            labels = c("A", "B"), ncol = 2, nrow = 1,
-                            rel_widths = c(0.5, 0.5))
+lastplotgrid2panelv2 <- plot_grid(likert_22.mpg, likert_72.mpg, 
+                            labels = c("A", "B"), ncol = 1, nrow = 2,
+                            rel_heights = c(0.5, 0.5))
 
-save_plot("lastplotgrid2panel.jpg", lastplotgrid2panel, base_width = 17, base_height = 5)
+save_plot("lastplotgrid2panelv2.jpg", lastplotgrid2panelv2, base_width = 8.5, base_height = 10)
 ```
 
 ### Does whether people pay attention to a CV statement vary based on age, country, research area, department and/or their views on last authorship?
