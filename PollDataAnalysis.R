@@ -691,7 +691,7 @@ plot(likert_52)
 colnames(lastdata)[1] <- "Molecular vs. Organismal"
 likert_62 <- likert(lastdata, grouping = lastdata_grouping$molecular)
 plot(likert_62)
-colnames(lastdata)[1] <- "Frequency of interdisciplinary research?"
+colnames(lastdata)[1] <- "Frequency of interdisciplinary research"
 likert_72 <- likert(lastdata, grouping = lastdata_grouping$Interdisciplinary)
 plot(likert_72)
 colnames(lastdata)[1] <- "Ecology vs. Evolution"
