@@ -143,6 +143,7 @@ library(knitr)
 require(likert)
 library(reshape2)
 library(magrittr)
+library(forcats)
 ```
 
 ```{r}
@@ -592,3 +593,49 @@ statementplotgrid <- plot_grid(likert_13.mpg, likert_23.mpg, likert_33.mpg, like
 
 save_plot("statementplotgrid.jpg", statementplotgrid, base_width = 17, base_height = 15)
 ```
+
+## Analysis of data on papers in Ecology 1956-2016
+
+```{r, important data on authorship over time}
+timedata <- read.csv("Authorshipacrosstime.csv", na.strings="?")
+str(timedata)
+```
+
+```{r, plot number of authors over time}
+timeplot <- timedata %>%
+  ggplot(aes(x=Year,y=Number.authors,group=Year)) +
+  geom_boxplot() +
+  theme_bw() + 
+  ggtitle("Number of authors in articles in first or \nsecond issue of Ecology, 1956-2016") +
+  scale_x_continuous(breaks=c(1956,1966,1976,1986,1996,2006,2016)) +
+  ylab("Number of authors")
+
+timeplot
+
+save_plot("timeplot.jpg", timeplot, base_width = 6, base_height = 4)
+```
+
+```{r, plot of corresponding author in Ecology over time}
+
+timesummary <- timedata %>%
+  group_by(Year,Correspondence) %>%
+  summarise(n=n()) %>%
+  mutate(rel.freq = round(100 * n/sum(n), 0))
+
+corrlevels <- c("first","middle","last","ND")
+
+timecorrplot <- timesummary %>%
+  filter(Year>2000) %>%
+  ggplot(aes(x=Year,y=rel.freq,fill= Correspondence)) +
+  geom_bar(stat='identity',position=position_dodge(),color='black') +
+  ggtitle("Corresponding author position for articles in \nfirst or second issue of Ecology") +
+  scale_x_continuous(breaks=c(2006,2011,2016)) +
+  scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9")) +
+  ylab("Proportion")
+
+timecorrplot
+## Need to fix code to get order of bars to be first, middle, last.
+
+save_plot("timecorrplot.jpg", timecorrplot, base_width = 6, base_height = 4)
+```
+
