@@ -634,7 +634,6 @@ timecorrplot <- timesummary %>%
   ylab("Proportion")
 
 timecorrplot
-## Currently broke code by adding in lines 628 (that is, second mutate line) in my attempt to reorder plot to have bars in order of first, middle, last
 
 save_plot("timecorrplot.jpg", timecorrplot, base_width = 6, base_height = 4)
 ```
