@@ -622,10 +622,10 @@ timesummary <- timedata %>%
   summarise(n=n()) %>%
   mutate(rel.freq = round(100 * n/sum(n), 0))
 
-corrlevels <- c("first","middle","last","ND")
-
 timecorrplot <- timesummary %>%
   filter(Year>2000) %>%
+  mutate(Correspondence = as.character(Correspondence)) %>%
+  mutate(Correspondence = factor(Correspondence, levels=c"first","middle","last")) %>%
   ggplot(aes(x=Year,y=rel.freq,fill= Correspondence)) +
   geom_bar(stat='identity',position=position_dodge(),color='black') +
   ggtitle("Corresponding author position for articles in \nfirst or second issue of Ecology") +
@@ -634,7 +634,7 @@ timecorrplot <- timesummary %>%
   ylab("Proportion")
 
 timecorrplot
-## Need to fix code to get order of bars to be first, middle, last.
+## Currently broke code by adding in lines 628 in my attempt to reorder plot to have bars in order of first, middle, last
 
 save_plot("timecorrplot.jpg", timecorrplot, base_width = 6, base_height = 4)
 ```
