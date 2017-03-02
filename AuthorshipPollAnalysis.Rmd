@@ -625,7 +625,7 @@ timesummary <- timedata %>%
 timecorrplot <- timesummary %>%
   filter(Year>2000) %>%
   mutate(Correspondence = as.character(Correspondence)) %>%
-  mutate(Correspondence = factor(Correspondence, levels=c"first","middle","last")) %>%
+  mutate(Correspondence = factor(Correspondence, levels=c("first","middle","last"))) %>%
   ggplot(aes(x=Year,y=rel.freq,fill= Correspondence)) +
   geom_bar(stat='identity',position=position_dodge(),color='black') +
   ggtitle("Corresponding author position for articles in \nfirst or second issue of Ecology") +
