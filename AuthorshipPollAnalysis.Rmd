@@ -136,7 +136,7 @@ After removing the four blank responses, there were 1122 responses to the poll. 
 #install.packages("devtools")
 #devtools::install_github("tidyverse/ggplot2")
 
-#uncomment one or both of the above lines if needed; need the github version of ggplot2 to deal with bar width problem down below
+#uncomment one or both of the above lines if needed; tried out the github version of ggplot to work on the bar width issue, but decided to go back to CRAN version
 ```
 
 ```{r, import, message=FALSE, warning=FALSE}
@@ -607,23 +607,46 @@ save_plot("statementplotgrid.jpg", statementplotgrid, base_width = 17, base_heig
 ```{r, import data on authorship over time}
 timedata <- read.csv("Authorshipacrosstime.csv", na.strings="?")
 str(timedata)
+
+Journal = c("Evolution","Evolution","Evolution","Evolution","Evolution")
+Year = c(1956,1966,1976,1986,1996)
+Number.authors = c(-10,-10,-10,-10,-10)
+
+missingdf3 <- data.frame(Journal, Year, Number.authors)
+timedatamerge <- bind_rows(timedata,missingdf3)
 ```
 
 ```{r, plot number of authors over time}
 timeplot <- timedata %>%
-  filter(Journal != c("AmNat")) %>%
+  filter(Journal == c("Ecology")) %>%
   ggplot(aes(x=Year,y=Number.authors,fill=Journal,group=interaction(Journal,Year))) +
   scale_fill_manual(values=c("white","#999999")) +
-  geom_boxplot(varwidth=TRUE,position="dodge") +
+  geom_boxplot(width=4) +
   theme_bw() + 
-  ggtitle("Number of authors of articles in first or second issue of journal, 1956-2016") +
-  scale_x_discrete(breaks=c(1956,1966,1976,1986,1996,2006,2016)) +
-  ylab("Number of authors")
+  ggtitle("Number of authors of articles in first or \nsecond issue of Ecology, 1956-2016") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_x_continuous(breaks=c(1956,1966,1976,1986,1996,2006,2016)) +
+  ylab("Number of authors") 
 
 timeplot
 
 save_plot("timeplot.jpg", timeplot, base_width = 6, base_height = 4)
-#note: this looks good within Rstudio but awful in the html file and in the saved jpg. Need to work on that, too.
+```
+
+```{r, plot number of authors over time}
+timeplotwithevol <- timedatamerge %>%
+  filter(Journal != c("AmNat")) %>%
+  ggplot(aes(x=Year,y=Number.authors,fill=Journal,group=interaction(Journal,Year))) +
+  scale_fill_manual(values=c("white","#999999")) +
+  geom_boxplot(width=4) +
+  theme_bw() + 
+  ggtitle("Number of authors of articles in first or \nsecond issue of journal, 1956-2016") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_x_continuous(breaks=c(1956,1966,1976,1986,1996,2006,2016)) +
+  ylab("Number of authors") +
+  ylim(0,20)
+
+timeplotwithevol
 ```
 
 ```{r, plot of corresponding authors over time}
