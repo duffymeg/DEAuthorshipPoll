@@ -634,6 +634,13 @@ timesummary <- timedata %>%
   summarise(n=n()) %>%
   mutate(rel.freq = round(100 * n/sum(n), 0))
 
+Year = c(2006,2011,2016,2001,2006,2011,2016,2001,2006,2011,2016)
+Correspondence = c("ND","ND","ND","all","all","all","all","other","other","other","other")
+n = c(0,0,0,0,0,0,0,0,0,0,0)
+rel.freq = c(0,0,0,0,0,0,0,0,0,0,0)
+
+missingdf <- data.frame(Year, Correspondence, n, rel.freq)
+timesummary <- bind_rows(timesummary,missingdf)
 
 timecorrplotecol <- timesummary %>%
   filter(Year>2000) %>%
@@ -643,14 +650,26 @@ timecorrplotecol <- timesummary %>%
   geom_bar(stat='identity',position=position_dodge(),color='black') +
   ggtitle("Corresponding author position for articles in \nfirst or second issue of Ecology") +
   scale_x_continuous(breaks=c(2001,2006,2011,2016)) +
-  scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442")) +
-  ylab("Proportion")
+  scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442","#0072B2")) +
+  ylab("Percent")
+
+timecorrplotecol
 
 timesummaryevol <- timedata %>%
   filter(Journal == c("Evolution")) %>%
   group_by(Year,Correspondence) %>%
   summarise(n=n()) %>%
   mutate(rel.freq = round(100 * n/sum(n), 0))
+
+timesummaryevol$Year <- as.numeric(timesummaryevol$Year)
+
+Year = c(2001,2006,2011,2016,2006,2011,2016,2011,2016,2016)
+Correspondence = c("ND","ND","ND","ND","middle","middle","middle","other","other","all")
+n = c(0,0,0,0,0,0,0,0,0,0)
+rel.freq = c(0,0,0,0,0,0,0,0,0,0)
+
+missingdf2 <- data.frame(Year, Correspondence, n, rel.freq)
+timesummaryevol <- bind_rows(timesummaryevol,missingdf2)
 
 timecorrplotevol <- timesummaryevol %>%
   filter(Year>2000) %>%
@@ -660,8 +679,8 @@ timecorrplotevol <- timesummaryevol %>%
   geom_bar(stat='identity',position=position_dodge(),color='black') +
   ggtitle("Corresponding author position for articles in \nfirst issue of Evolution") +
   scale_x_continuous(breaks=c(2001,2006,2011,2016)) +
-  scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442")) +
-  ylab("Proportion")
+  scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442","#0072B2")) +
+  ylab("Percent")
 
 twopanelplot <- ggdraw() +
   draw_plot(timecorrplotecol,0,0.5,1.0,0.5) +
