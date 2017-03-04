@@ -633,7 +633,7 @@ timeplot
 save_plot("timeplot.jpg", timeplot, base_width = 6, base_height = 4)
 ```
 
-```{r, plot number of authors over time}
+```{r, plot number of authors over time including Evolution}
 timeplotwithevol <- timedatamerge %>%
   filter(Journal != c("AmNat")) %>%
   ggplot(aes(x=Year,y=Number.authors,fill=Journal,group=interaction(Journal,Year))) +
@@ -647,6 +647,7 @@ timeplotwithevol <- timedatamerge %>%
   ylim(0,20)
 
 timeplotwithevol
+#Still need to fix box width issue in this figure
 ```
 
 ```{r, plot of corresponding authors over time}
@@ -676,7 +677,19 @@ timecorrplotecol <- timesummary %>%
   scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442","#0072B2")) +
   ylab("Percent")
 
-timecorrplotecol
+timecorrlineplotecol <- timesummary %>%
+  filter(Year>2000) %>%
+  mutate(Correspondence = as.character(Correspondence)) %>%
+  mutate(Correspondence = factor(Correspondence, levels=c("first","middle","last","ND","all","other"))) %>%
+  ggplot(aes(x=Year,y=rel.freq,color= Correspondence)) +
+  geom_line(stat='identity',aes(linetype=Correspondence),size=1) +
+  geom_point(aes(shape=Correspondence), size=4) +
+  ggtitle("Corresponding author position for articles in \nfirst or second issue of Ecology") +
+  scale_x_continuous(breaks=c(2001,2006,2011,2016)) +
+  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442","#0072B2")) +
+  ylab("Percent")
+
+timecorrlineplotecol
 
 timesummaryevol <- timedata %>%
   filter(Journal == c("Evolution")) %>%
@@ -705,12 +718,24 @@ timecorrplotevol <- timesummaryevol %>%
   scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442","#0072B2")) +
   ylab("Percent")
 
-twopanelplot <- ggdraw() +
-  draw_plot(timecorrplotecol,0,0.5,1.0,0.5) +
-  draw_plot(timecorrplotevol,0,0,1.0,0.5) 
+timecorrlineplotevol <- timesummaryevol %>%
+  filter(Year>2000) %>%
+  mutate(Correspondence = as.character(Correspondence)) %>%
+  mutate(Correspondence = factor(Correspondence, levels=c("first","middle","last","ND","all","other"))) %>%
+  ggplot(aes(x=Year,y=rel.freq,color= Correspondence)) +
+  geom_line(stat='identity',aes(linetype=Correspondence),size=1) +
+  geom_point(aes(shape=Correspondence), size=4) +
+  ggtitle("Corresponding author position for articles in \nfirst issue of Evolution") +
+  scale_x_continuous(breaks=c(2001,2006,2011,2016)) +
+  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442","#0072B2")) +
+  ylab("Percent")
 
-twopanelplot
+twopanellineplot <- ggdraw() +
+  draw_plot(timecorrlineplotecol,0,0.5,1.0,0.5) +
+  draw_plot(timecorrlineplotevol,0,0,1.0,0.5) 
 
-save_plot("twopanelplot.jpg", twopanelplot, base_width = 8, base_height = 6)
+twopanellineplot
+
+save_plot("twopanellineplot.jpg", twopanellineplot, base_width = 8, base_height = 6)
 ```
 
