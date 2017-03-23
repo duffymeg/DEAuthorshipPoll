@@ -347,12 +347,41 @@ bestcorrespondingplot <- ggplot(BestCorrespondingSum,aes(x=CorrespondingBest01,y
   theme(plot.title=element_text(size=12)) +
   theme(axis.title.y=element_blank()) +
   theme(axis.title.x=element_text(size=12)) +
-  theme(axis.ticks.y = element_blank())
+  theme(axis.ticks.y = element_blank()) +
+  ylim(0,65)
 
-save_plot("bestcorrespondingplot.jpg", bestcorrespondingplot)
+save_plot("bestcorrespondingplot.jpg", bestcorrespondingplot, base_width = 6, base_height = 4)
 bestcorrespondingplot
 ```
 
+```{r, plot comparing current and best practices}
+BestCorrespondingSum$Corresponding01 <- BestCorrespondingSum$CorrespondingBest01
+BestCorrespondingSum$bestcurrent <- c("best","best","best","best","best")
+CurrentCorrespondingSum$Corresponding01 <- CurrentCorrespondingSum$CorrespondingCurrent01
+CurrentCorrespondingSum$bestcurrent <- c("current","current","current","current","current")
+
+CombinedCorrespondingSum <- bind_rows(BestCorrespondingSum,CurrentCorrespondingSum)
+
+combinedcorrespondingplot <- ggplot(CombinedCorrespondingSum,aes(x=Corresponding01,y=rel.freq,fill= bestcurrent)) +
+  geom_bar(stat="identity",position=position_dodge()) +
+  ylab("Percent of responses") +
+  coord_flip() +
+  theme(axis.text.y = element_blank()) +
+  annotate("text", x = 1, y = 24.5, label = "The corresponding author should be the person \nthat has taken responsibility for fielding questions \nabout the paper post-publication",hjust=0,size=4) +
+  annotate("text", x = 2, y = 5, label = "The corresponding author should be the person with the most stable \ncontact info and/or internet access",hjust=0,size=4) +
+  annotate("text", x = 3, y = 20, label = "The corresponding author should be whichever person \nuploaded the files (usually the first author)",hjust=0,size=4) +
+  annotate("text", x = 4, y = 8, label = "The corresponding author should be the senior author",hjust=0,size=4) +
+  annotate("text", x = 5, y = 1, color="black", label = "The corresponding author should be the person who uploaded the files, \nmanaged the revisions and wrote the response to reviewers, \nand took responsibility for the paper after publication",hjust=0,size=4) +
+  theme(plot.title=element_text(size=12)) +
+  theme(axis.title.y=element_blank()) +
+  theme(axis.title.x=element_text(size=12)) +
+  theme(axis.ticks.y = element_blank()) +
+  scale_fill_manual(values=c("#999999", "#99CCFF"))
+
+combinedcorrespondingplot
+
+save_plot("combinedcorrespondingplot.jpg", combinedcorrespondingplot, base_width = 8, base_height = 6)
+```
 
 ### Q4: "If someone includes a statement on his/her CV indicating they have used a first/last author emphasis, do you pay attention to that?"
 
@@ -415,7 +444,7 @@ CVstatementplotgray
 
 ### Does whether people view the last author as the senior author vary based on age, country, research area, and/or department?
 
-```{r}
+```{r, cross tabs related to last authorship}
 ## first, making a "molecular" variable
 polldata$molecular <- ifelse(polldata$PrimaryResearch01 == 2 | polldata$PrimaryResearch == 4, "molecular",
                              ifelse(polldata$PrimaryResearch01 == 1 | polldata$PrimaryResearch == 5,"organismal","other"
@@ -526,7 +555,7 @@ lastplotgrid4panelv2 <- plot_grid(likert_92.mpg, likert_52.mpg, likert_32.mpg, l
                             labels = c("A", "B", "C", "D"), ncol = 1, nrow = 4,
                             rel_heights = c(0.3, 0.3, 0.2, 0.2))
 
-save_plot("lastplotgrid4panelv2.jpg", lastplotgrid4panelv2, base_width = 8.5, base_height = 15)
+save_plot("lastplotgrid4panelv2.jpg", lastplotgrid4panelv2, base_width = 9, base_height = 15)
 ```
 
 ```{r, q1-2panelcrosstabfig, warning=FALSE}
@@ -545,12 +574,12 @@ lastplotgrid2panelv2 <- plot_grid(likert_22.mpg, likert_72.mpg,
                             labels = c("A", "B"), ncol = 1, nrow = 2,
                             rel_heights = c(0.5, 0.5))
 
-save_plot("lastplotgrid2panelv2.jpg", lastplotgrid2panelv2, base_width = 8.5, base_height = 10)
+save_plot("lastplotgrid2panelv2.jpg", lastplotgrid2panelv2, base_width = 9, base_height = 10)
 ```
 
 ### Does whether people pay attention to a CV statement vary based on age, country, research area, department and/or their views on last authorship?
 
-```{r}
+```{r, CV statement crosstabs}
 ## subsetting only the statement data, but first filter by the grouping variables of interest
 ## then renaming factors, renaming question
 statementdata <-
@@ -615,6 +644,10 @@ statementdata_grouping$LastSeniorYesNo <- ifelse(statementdata_grouping$LastSeni
 ```{r, q4-crosstabfig, warning=FALSE}
 ## Plots
 ## plots##
+colnames(statementdata)[1] <- "Career stage"
+likert_32 <- likert(lastdata, grouping = lastdata_grouping$depttype)
+plot(likert_32)
+
 likert_13 <- likert(statementdata, grouping = statementdata_grouping$youngold)
 plot(likert_13)
 likert_23 <- likert(statementdata, grouping = statementdata_grouping$WhereLive)
@@ -647,6 +680,173 @@ statementplotgrid <- plot_grid(likert_13.mpg, likert_23.mpg, likert_33.mpg, like
                           rel_heights = c(0.3, 0.3, 0.35))
 
 save_plot("statementplotgrid.jpg", statementplotgrid, base_width = 17, base_height = 15)
+
+#ideally, would fix the above plot so that the title for each panel was the factor used to break down responses. But since there doesn't seem to be much going on with this, I'm just going to move on.
+```
+
+### Do views on corresponding authorship vary based on age, country, research area, and/or department?
+```{r, cross tabs related to current corresponding authorship practices}
+## subsetting only the corresponding author data, but first filter by the grouping variables of interest
+## then renaming factors, renaming question
+corrcurrdata <-
+  polldata %>%
+  filter(CorrespondingBest01 != "NA", LastSenior != "NA", 
+         WhereLive != "NA", BasicApplied != "NA", 
+         depttype != "NA", PrimaryResearch != "NA", Inter01 != "NA") %>% 
+  select(CorrespondingCurrent,CorrespondingCurrent01,YearssincePhD,PhD01) 
+
+corrcurrdata$PhDShort <- corrcurrdata$PhD01
+corrcurrdata$PhDShort <- plyr::mapvalues(corrcurrdata$PhDShort, c(1, 2, 3, 4, 5, 6, 7), c("student","1 to 5", "6 to 10", "11 to 15", "16 to 20", "over 20", "no PhD"))
+
+corrcurrdata$CorrespondingCurrentShort <- corrcurrdata$CorrespondingCurrent01
+corrcurrdata$CorrespondingCurrentShort <- plyr::mapvalues(corrcurrdata$CorrespondingCurrentShort, c(1, 2, 3, 4, 5), c("questions","stable contact info", "uploaded files", "senior author", "full responsibility"))
+
+currentsummary <- corrcurrdata %>%
+  group_by(PhD01,CorrespondingCurrentShort) %>%
+  summarise(n=n()) %>%
+  mutate(rel.freq = round(100 * n/sum(n), 0))
+
+currentsummary$CorrespondingCurrentShort <- as.factor(currentsummary$CorrespondingCurrentShort)
+
+currentlineplot <- currentsummary %>%
+  filter(CorrespondingCurrentShort != "NA") %>%
+  filter(PhD01 < 7) %>%
+  ggplot(aes(x=PhD01,y=rel.freq,color= CorrespondingCurrentShort)) +
+  geom_line(stat='identity',aes(linetype=CorrespondingCurrentShort),size=1) +
+  geom_point(aes(shape=CorrespondingCurrentShort), size=4) +
+  ggtitle("Views of people at different career stages on \ncurrent corresponding authorship practices") +
+  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73","#0072B2")) +
+  ylab("Percent")
+
+currentlineplot
+
+save_plot("currentlineplot.jpg", currentlineplot, base_width = 8, base_height = 4)
+#1 = The corresponding author is the person that has taken responsibility for fielding questions about the paper post-publication  
+#2 = The corresponding author is the person with the most stable contact info and/or internet access  
+#3 = The corresponding author is usually the person who uploaded the files (usually the first author)  
+#4 = The corresponding author is usually the senior author  
+#5 = The corresponding author uploaded the files, managed the revisions and wrote the response to reviewers, and took responsibility for the paper after publication  
+
+# questions = The corresponding author is the person that has taken responsibility for fielding questions about the paper post-publication  
+# stable contact info = The corresponding author is the person with the most stable contact info and/or internet access  
+# uploaded files = The corresponding author is usually the person who uploaded the files (usually the first author)  
+# senior author = The corresponding author is usually the senior author  
+# full responsibility = The corresponding author uploaded the files, managed the revisions and wrote the response to reviewers, and took responsibility for the paper after publication  
+
+#1 = 0 (current students and people without a PhD should choose this)  
+#2 = 1-5  
+#3 = 6-10  
+#4 = 11-15  
+#5 = 16-20  
+#6 = >20  
+#7 = I do not have a PhD and am not a current student  
+
+corrcurrdataecoevo <-
+  polldata %>%
+  filter(CorrespondingBest01 != "NA", LastSenior != "NA", 
+         WhereLive != "NA", BasicApplied != "NA", 
+         depttype != "NA", PrimaryResearch != "NA", Inter01 != "NA") %>% 
+  select(CorrespondingCurrent,CorrespondingCurrent01,ecoevo) 
+
+corrcurrdataecoevo$CorrespondingCurrentShort <- corrcurrdataecoevo$CorrespondingCurrent01
+corrcurrdataecoevo$CorrespondingCurrentShort <- plyr::mapvalues(corrcurrdataecoevo$CorrespondingCurrentShort, c(1, 2, 3, 4, 5), c("questions","stable contact info", "uploaded files", "senior author", "full responsibility"))
+
+currentsummaryecoevo <- corrcurrdataecoevo %>%
+  filter(ecoevo != "other") %>%
+  group_by(ecoevo,CorrespondingCurrentShort) %>%
+  summarise(n=n()) %>%
+  mutate(rel.freq = round(100 * n/sum(n), 0))
+
+currentsummaryecoevo$CorrespondingCurrentShort <- as.factor(currentsummaryecoevo$CorrespondingCurrentShort)
+
+ecoevo = c("evolution")
+CorrespondingCurrentShort = c("stable contact info")
+n = c(0)
+rel.freq = c(0)
+
+missingdfecoevo <- data.frame(ecoevo, CorrespondingCurrentShort, n, rel.freq)
+currentsummaryecoevo <- bind_rows(currentsummaryecoevo,missingdfecoevo)
+
+currentlineplotecoevo <- currentsummaryecoevo %>%
+  filter(CorrespondingCurrentShort != "NA") %>%
+  ggplot(aes(x=ecoevo,y=rel.freq,color= CorrespondingCurrentShort)) +
+  geom_line(stat='identity',aes(linetype=CorrespondingCurrentShort),size=1) +
+  geom_point(aes(shape=CorrespondingCurrentShort), size=4) +
+  ggtitle("Views of people at different career stages on \ncurrent corresponding authorship practices") +
+  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73","#0072B2")) +
+  ylab("Percent")
+
+currentbarplotecoevo <- currentsummaryecoevo %>%
+  filter(CorrespondingCurrentShort != "NA") %>%
+  ggplot(aes(x=ecoevo,y=rel.freq,fill= CorrespondingCurrentShort)) +
+  geom_bar(stat='identity',aes(fill=CorrespondingCurrentShort),position=position_dodge(),color="black") +
+  ggtitle("Views of ecologists vs. evolutionary biologists on \ncurrent corresponding authorship practices") +
+  scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73","#0072B2")) +
+  ylab("Percent")
+
+currentbarplotecoevo
+
+save_plot("currentbarplotecoevo.jpg", currentbarplotecoevo, base_width = 8, base_height = 4)
+
+
+corrcurrdatadepttype <-
+  polldata %>%
+  filter(CorrespondingBest01 != "NA", LastSenior != "NA", 
+         WhereLive != "NA", BasicApplied != "NA", 
+         depttype != "NA", PrimaryResearch != "NA", Inter01 != "NA") %>% 
+  select(CorrespondingCurrent,CorrespondingCurrent01,depttype) 
+
+corrcurrdatadepttype$CorrespondingCurrentShort <- corrcurrdatadepttype$CorrespondingCurrent01
+corrcurrdatadepttype$CorrespondingCurrentShort <- plyr::mapvalues(corrcurrdatadepttype$CorrespondingCurrentShort, c(1, 2, 3, 4, 5), c("questions","stable contact info", "uploaded files", "senior author", "full responsibility"))
+
+currentsummarydepttype <- corrcurrdatadepttype %>%
+  filter(depttype != "other") %>%
+  group_by(depttype,CorrespondingCurrentShort) %>%
+  summarise(n=n()) %>%
+  mutate(rel.freq = round(100 * n/sum(n), 0))
+
+currentsummarydepttype$CorrespondingCurrentShort <- as.factor(currentsummarydepttype$CorrespondingCurrentShort)
+
+currentbarplotdepttype <- currentsummarydepttype %>%
+  filter(CorrespondingCurrentShort != "NA") %>%
+  ggplot(aes(x=depttype,y=rel.freq,fill= CorrespondingCurrentShort)) +
+  geom_bar(stat='identity',aes(fill=CorrespondingCurrentShort),position=position_dodge(),color="black") +
+  ggtitle("Views of people in different department types on \ncurrent corresponding authorship practices") +
+  scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73","#0072B2")) +
+  ylab("Percent")
+
+currentbarplotdepttype
+
+save_plot("currentbarplotdepttype.jpg", currentbarplotdepttype, base_width = 8, base_height = 4)
+
+corrcurrdataregion <-
+  polldata %>%
+  filter(CorrespondingBest01 != "NA", LastSenior != "NA", 
+         WhereLive != "NA", BasicApplied != "NA", 
+         depttype != "NA", PrimaryResearch != "NA", Inter01 != "NA") %>% 
+  filter(WhereLive01 < 6) %>%
+  filter(WhereLive01 > 3) %>%
+  select(CorrespondingCurrent,CorrespondingCurrent01,WhereLive) 
+
+corrcurrdataregion$CorrespondingCurrentShort <- corrcurrdataregion$CorrespondingCurrent01
+corrcurrdataregion$CorrespondingCurrentShort <- plyr::mapvalues(corrcurrdataregion$CorrespondingCurrentShort, c(1, 2, 3, 4, 5), c("questions","stable contact info", "uploaded files", "senior author", "full responsibility"))
+
+currentsummaryregion <- corrcurrdataregion %>%
+  group_by(WhereLive,CorrespondingCurrentShort) %>%
+  summarise(n=n()) %>%
+  mutate(rel.freq = round(100 * n/sum(n), 0))
+
+currentbarplotregion <- currentsummaryregion %>%
+  filter(CorrespondingCurrentShort != "NA") %>%
+  ggplot(aes(x=WhereLive,y=rel.freq,fill= CorrespondingCurrentShort)) +
+  geom_bar(stat='identity',aes(fill=CorrespondingCurrentShort),position=position_dodge(),color="black") +
+  ggtitle("Views of people in Europe and North America on \ncurrent corresponding authorship practices") +
+  scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73","#0072B2")) +
+  ylab("Percent")
+
+currentbarplotregion
+
+save_plot("currentbarplotregion.jpg", currentbarplotregion, base_width = 8, base_height = 4)
 ```
 
 ## Analysis of data on papers in Ecology 1956-2016
@@ -714,6 +914,7 @@ timeplotalljournals
 
 save_plot("timeplotalljournals.jpg", timeplotalljournals, base_width = 6, base_height = 4)
 ```
+
 
 ```{r, plot of corresponding authors over time}
 
@@ -804,6 +1005,7 @@ twopanellineplot
 save_plot("timecorrlineplotecol.jpg", timecorrlineplotecol, base_width = 8, base_height = 4)
 save_plot("timecorrlineplotevol.jpg", timecorrlineplotevol, base_width = 8, base_height = 4)
 ```
+
 ```{r, time plot for AmNat}
 timesummaryamnat <- timedata %>%
   filter(Journal == c("AmNat")) %>%
@@ -813,8 +1015,8 @@ timesummaryamnat <- timedata %>%
 
 timesummaryamnat$Year <- as.numeric(timesummaryamnat$Year)
 
-Year = c(2006,2011,2016,2006,2011,2016,2006,2011,2016,2006,2011,2016)
-Correspondence = c("ND","ND","ND","middle","middle","middle","other","other","other","last","all","all")
+Year = c(2001,2001,2006,2006,2011,2011,2011,2011,2016,2016,2016,2016)
+Correspondence = c("ND","middle","ND","last","ND","middle","all","other","ND","middle","all","other")
 n = c(0,0,0,0,0,0,0,0,0,0,0,0)
 rel.freq = c(0,0,0,0,0,0,0,0,0,0,0,0)
 
@@ -822,19 +1024,22 @@ missingdf4 <- data.frame(Year, Correspondence, n, rel.freq)
 timesummaryamnat <- bind_rows(timesummaryamnat,missingdf4)
 
 timecorrlineplotamnat <- timesummaryamnat %>%
-  filter(Year>2005) %>%
+  filter(Year>2000) %>%
   mutate(Correspondence = as.character(Correspondence)) %>%
   mutate(Correspondence = factor(Correspondence, levels=c("first","middle","last","ND","all","other"))) %>%
   ggplot(aes(x=Year,y=rel.freq,color= Correspondence)) +
   geom_line(stat='identity',aes(linetype=Correspondence),size=1) +
   geom_point(aes(shape=Correspondence), size=4) +
-  ggtitle("Corresponding author position for articles in \nfirst issue of Evolution") +
+  ggtitle("Corresponding author position for articles in \nfirst and second issues of American Naturalist") +
   scale_x_continuous(breaks=c(2001,2006,2011,2016)) +
   scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442","#0072B2")) +
-  ylab("Percent") 
+  ylab("Percent") +
+  ylim(0,100)
 
-timecorrlineplotamnat
+threepanellineplot <- ggdraw() +
+  draw_plot(timecorrlineplotecol,0,0.67,1.0,0.33) +
+  draw_plot(timecorrlineplotamnat,0,0.33,1.0,0.33) +
+  draw_plot(timecorrlineplotevol,0,0,1.0,0.33) 
+
+save_plot("threepanellineplot.jpg", threepanellineplot, base_width = 8, base_height = 4)
 ```
-
-Next: finish AmNat analysis, see if can do analysis of all ecology papers over time
-Write up results of those as a quick DE post, plus add to authorship manuscript.
