@@ -258,6 +258,31 @@ lastseniorplot <- ggplot(LastSeniorSum,aes(x=LastSenior01,y=rel.freq,fill=LastSe
 save_plot("lastseniorplot.jpg", lastseniorplot)
 
 lastseniorplot
+
+#grayscaleversion:
+LastSeniorSum$LastSenior01c <- as.factor(LastSeniorSum$LastSenior01)
+lastseniorplotgray <- ggplot(LastSeniorSum,aes(x=LastSenior01c,y=rel.freq,fill=LastSenior01c)) +
+  geom_bar(stat="identity") +
+  scale_fill_manual(values=c("#000000","#000000","#000000","#CCCCCC","#CCCCCC","#CCCCCC")) +
+  ylab("Percent of responses") +
+  theme(legend.position="none") +
+  coord_flip() +
+  theme(axis.text.y = element_blank()) +
+  annotate("text", x = 1, y = 9, label = "No", hjust=0, size=3) +
+  annotate("text", x = 2, y = 9, label = "It depends, but probably no", hjust=0, size=3) +
+  annotate("text", x = 3, y = 9, label = "Not sure, but probably no", hjust=0, size=3) +
+  annotate("text", x = 4, y = 9, label = "Not sure, but probably yes", hjust=0, size=3) +
+  annotate("text", x = 5, y = 01, label = "It depends, but probably yes", hjust=0, size=3) +
+  annotate("text", x = 6, y = 01, label = "Yes", hjust=0, size=3) +
+  ggtitle("For ecology papers, \ndo you consider the last author \nto be the senior author?") +
+  theme(plot.title=element_text(size=12)) +
+  theme(axis.title.y=element_blank()) +
+  theme(axis.title.x=element_text(size=12)) +
+  theme(axis.ticks.y = element_blank()) 
+
+lastseniorplotgray
+
+save_plot("lastseniorplotgray.jpg", lastseniorplotgray)
 ```
 
 ### Q2: "Which of the following statements most closely matches the current norms in ecology in terms of who is corresponding author?"
@@ -362,6 +387,28 @@ CVstatementplot <- ggplot(CVStatementSum,aes(x=CVStatement01,y=rel.freq,fill=CVS
 
 save_plot("CVstatementplot.jpg", CVstatementplot)
 CVstatementplot
+
+#grayscale version:
+CVStatementSum$CVStatement01c <- as.factor(CVStatementSum$CVStatement01)
+CVstatementplotgray <- ggplot(CVStatementSum,aes(x=CVStatement01c,y=rel.freq,fill=CVStatement01c)) +
+  geom_bar(stat="identity") +
+  scale_fill_manual(values=c("#000000","#000000","#CCCCCC","#CCCCCC")) +
+  ylab("Percent of responses") +
+  theme(legend.position="none") +
+  coord_flip() +
+  theme(axis.text.y = element_blank()) +
+  annotate("text", x = 1, y = 1, color="white", label = "No",hjust=0,size=2.5) +
+  annotate("text", x = 2, y = 1, color="white", label = "I have never seen this, but \nwould probably not pay \nattention to it",hjust=0,size=2.5) +
+  annotate("text", x = 3, y = 1, color="black", label = "I have never seen this, but would probably pay attention to it",hjust=0,size=2.5) +
+  annotate("text", x = 4, y = 1, color="black", label = "Yes",hjust=0,size=2.5) +
+  ggtitle("If someone includes a statement on his/her \nCV indicating they have used a first/last \nauthor emphasis, do you pay attention to that?") +
+  theme(plot.title=element_text(size=12)) +
+  theme(axis.title.y=element_blank()) +
+  theme(axis.title.x=element_text(size=12)) +
+  theme(axis.ticks.y = element_blank())
+
+save_plot("CVstatementplotgray.jpg", CVstatementplotgray)
+CVstatementplotgray
 ```
 
 ## Looking at cross-tabs
@@ -650,6 +697,24 @@ timeplotwithevol
 #Still need to fix box width issue in this figure
 ```
 
+```{r, plot number of authors 2001-2016 for all journals}
+timeplotalljournals <- timedatamerge %>%
+  filter(Year>2000) %>%
+  ggplot(aes(x=Year,y=Number.authors,fill=Journal,group=interaction(Journal,Year))) +
+  scale_fill_manual(values=c("white","#999999","#CCCCCC")) +
+  geom_boxplot(width=4) +
+  theme_bw() + 
+  ggtitle("Number of authors of articles in first and/or \nsecond issue of journal, 2001-2016") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_x_continuous(breaks=c(2001,2006,2011,2016)) +
+  ylab("Number of authors") 
+
+timeplotalljournals
+
+
+save_plot("timeplotalljournals.jpg", timeplotalljournals, base_width = 6, base_height = 4)
+```
+
 ```{r, plot of corresponding authors over time}
 
 timesummary <- timedata %>%
@@ -736,6 +801,40 @@ twopanellineplot <- ggdraw() +
 
 twopanellineplot
 
-save_plot("twopanellineplot.jpg", twopanellineplot, base_width = 8, base_height = 6)
+save_plot("timecorrlineplotecol.jpg", timecorrlineplotecol, base_width = 8, base_height = 4)
+save_plot("timecorrlineplotevol.jpg", timecorrlineplotevol, base_width = 8, base_height = 4)
+```
+```{r, time plot for AmNat}
+timesummaryamnat <- timedata %>%
+  filter(Journal == c("AmNat")) %>%
+  group_by(Year,Correspondence) %>%
+  summarise(n=n()) %>%
+  mutate(rel.freq = round(100 * n/sum(n), 0))
+
+timesummaryamnat$Year <- as.numeric(timesummaryamnat$Year)
+
+Year = c(2006,2011,2016,2006,2011,2016,2006,2011,2016,2006,2011,2016)
+Correspondence = c("ND","ND","ND","middle","middle","middle","other","other","other","last","all","all")
+n = c(0,0,0,0,0,0,0,0,0,0,0,0)
+rel.freq = c(0,0,0,0,0,0,0,0,0,0,0,0)
+
+missingdf4 <- data.frame(Year, Correspondence, n, rel.freq)
+timesummaryamnat <- bind_rows(timesummaryamnat,missingdf4)
+
+timecorrlineplotamnat <- timesummaryamnat %>%
+  filter(Year>2005) %>%
+  mutate(Correspondence = as.character(Correspondence)) %>%
+  mutate(Correspondence = factor(Correspondence, levels=c("first","middle","last","ND","all","other"))) %>%
+  ggplot(aes(x=Year,y=rel.freq,color= Correspondence)) +
+  geom_line(stat='identity',aes(linetype=Correspondence),size=1) +
+  geom_point(aes(shape=Correspondence), size=4) +
+  ggtitle("Corresponding author position for articles in \nfirst issue of Evolution") +
+  scale_x_continuous(breaks=c(2001,2006,2011,2016)) +
+  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442","#0072B2")) +
+  ylab("Percent") 
+
+timecorrlineplotamnat
 ```
 
+Next: finish AmNat analysis, see if can do analysis of all ecology papers over time
+Write up results of those as a quick DE post, plus add to authorship manuscript.
