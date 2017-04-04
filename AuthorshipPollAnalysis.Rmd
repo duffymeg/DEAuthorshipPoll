@@ -152,6 +152,7 @@ library(reshape2)
 library(magrittr)
 library(forcats)
 library(lubridate)
+library(gridExtra)
 ```
 
 ```{r}
@@ -268,12 +269,12 @@ lastseniorplotgray <- ggplot(LastSeniorSum,aes(x=LastSenior01c,y=rel.freq,fill=L
   theme(legend.position="none") +
   coord_flip() +
   theme(axis.text.y = element_blank()) +
-  annotate("text", x = 1, y = 9, label = "No", hjust=0, size=3) +
-  annotate("text", x = 2, y = 9, label = "It depends, but probably no", hjust=0, size=3) +
-  annotate("text", x = 3, y = 9, label = "Not sure, but probably no", hjust=0, size=3) +
-  annotate("text", x = 4, y = 9, label = "Not sure, but probably yes", hjust=0, size=3) +
-  annotate("text", x = 5, y = 01, label = "It depends, but probably yes", hjust=0, size=3) +
-  annotate("text", x = 6, y = 01, label = "Yes", hjust=0, size=3) +
+  annotate("text", x = 1, y = 9, label = "No", hjust=0, size=3.5) +
+  annotate("text", x = 2, y = 9, label = "It depends, but probably no", hjust=0, size=3.5) +
+  annotate("text", x = 3, y = 9, label = "Not sure, but probably no", hjust=0, size=3.5) +
+  annotate("text", x = 4, y = 9, label = "Not sure, but probably yes", hjust=0, size=3.5) +
+  annotate("text", x = 5, y = 01, label = "It depends, but probably yes", hjust=0, size=3.5) +
+  annotate("text", x = 6, y = 01, label = "Yes", hjust=0, size=3.5) +
   ggtitle("For ecology papers, \ndo you consider the last author \nto be the senior author?") +
   theme(plot.title=element_text(size=12)) +
   theme(axis.title.y=element_blank()) +
@@ -381,6 +382,8 @@ combinedcorrespondingplot <- ggplot(CombinedCorrespondingSum,aes(x=Corresponding
 combinedcorrespondingplot
 
 save_plot("combinedcorrespondingplot.jpg", combinedcorrespondingplot, base_width = 8, base_height = 6)
+
+## NOTE: The above figure is Figure 3 for the manuscript.
 ```
 
 ### Q4: "If someone includes a statement on his/her CV indicating they have used a first/last author emphasis, do you pay attention to that?"
@@ -426,10 +429,10 @@ CVstatementplotgray <- ggplot(CVStatementSum,aes(x=CVStatement01c,y=rel.freq,fil
   theme(legend.position="none") +
   coord_flip() +
   theme(axis.text.y = element_blank()) +
-  annotate("text", x = 1, y = 1, color="white", label = "No",hjust=0,size=2.5) +
-  annotate("text", x = 2, y = 1, color="white", label = "I have never seen this, but \nwould probably not pay \nattention to it",hjust=0,size=2.5) +
-  annotate("text", x = 3, y = 1, color="black", label = "I have never seen this, but would probably pay attention to it",hjust=0,size=2.5) +
-  annotate("text", x = 4, y = 1, color="black", label = "Yes",hjust=0,size=2.5) +
+  annotate("text", x = 1, y = 1, color="white", label = "No",hjust=0,size=3.5) +
+  annotate("text", x = 2, y = 1, color="white", label = "I have never seen this, \nbut would probably not \npay attention to it",hjust=0,size=3.5) +
+  annotate("text", x = 3, y = 1, color="black", label = "I have never seen this, but would probably \npay attention to it",hjust=0,size=3.5) +
+  annotate("text", x = 4, y = 1, color="black", label = "Yes",hjust=0,size=3.5) +
   ggtitle("If someone includes a statement on his/her \nCV indicating they have used a first/last \nauthor emphasis, do you pay attention to that?") +
   theme(plot.title=element_text(size=12)) +
   theme(axis.title.y=element_blank()) +
@@ -438,6 +441,17 @@ CVstatementplotgray <- ggplot(CVStatementSum,aes(x=CVStatement01c,y=rel.freq,fil
 
 save_plot("CVstatementplotgray.jpg", CVstatementplotgray)
 CVstatementplotgray
+```
+
+```{r, combined Figure 1 for paper}
+figure1 <- plot_grid(lastseniorplotgray, CVstatementplotgray, labels = c("A", "B"), nrow = 2, align = "v")
+
+figure1
+
+save_plot("figure1.jpg", figure1, base_width = 4, base_height = 8)
+
+
+
 ```
 
 ## Looking at cross-tabs
@@ -532,50 +546,119 @@ lastdata_grouping$YearssincePhD <- factor(lastdata_grouping$YearssincePhD,
 ```
 
 ```{r, q1-4panelcrosstabfig, warning=FALSE}
+counts = lastdata_grouping %>%
+  count(depttype) %>%
+  mutate(variable=NA)
+
 colnames(lastdata)[1] <- "Department type"
 likert_32 <- likert(lastdata, grouping = lastdata_grouping$depttype)
-plot(likert_32)
+depttypelikertplot = plot(likert_32) + 
+  geom_text(data=counts,
+            aes(label=format(n,big.mark=","), x=depttype, y=145), 
+            size=3, colour="black", hjust=1) +
+  scale_y_continuous(limits=c(-100,150)) +
+  coord_flip(ylim=c(-110,110)) +
+  theme(plot.margin=unit(c(0.2,2,0.2,0.2),"cm")) + theme(legend.position = "none")
+
+depttypelikertplot <- ggplot_gtable(ggplot_build(depttypelikertplot))
+depttypelikertplot$layout$clip <- "off"
+depttypelikertplot.mpg <- plot(depttypelikertplot)
+
+plot(depttypelikertplot)
+
+counts = lastdata_grouping %>%
+  count(BasicApplied) %>%
+  mutate(variable=NA)
+
 colnames(lastdata)[1] <- "Basic v. Applied"
 likert_42 <- likert(lastdata, grouping = lastdata_grouping$BasicApplied)
-plot(likert_42)
+basicappliedlikertplot = plot(likert_42) + 
+  geom_text(data=counts,
+            aes(label=format(n,big.mark=","), x=BasicApplied, y=145), 
+            size=3, colour="black", hjust=1) +
+  scale_y_continuous(limits=c(-100,150)) +
+  coord_flip(ylim=c(-110,110)) +
+  theme(plot.margin=unit(c(0.2,2,0.2,0.2),"cm")) + theme(legend.position = "none")
+
+basicappliedlikertplot <- ggplot_gtable(ggplot_build(basicappliedlikertplot))
+basicappliedlikertplot$layout$clip <- "off"
+
+counts = lastdata_grouping %>%
+  count(PrimaryResearch) %>%
+  mutate(variable=NA)
+
 colnames(lastdata)[1] <- "Primary Research Area"
 likert_52 <- likert(lastdata, grouping = lastdata_grouping$PrimaryResearch)
-plot(likert_52)
-colnames(lastdata)[1] <- "Molecular vs. Organismal"
+primaryresearchlikertplot = plot(likert_52) + 
+  geom_text(data=counts,
+            aes(label=format(n,big.mark=","), x=PrimaryResearch, y=145), 
+            size=3, colour="black", hjust=1) +
+  scale_y_continuous(limits=c(-100,150)) +
+  coord_flip(ylim=c(-110,110)) +
+  theme(plot.margin=unit(c(0.2,2,0.2,0.2),"cm")) + theme(legend.position = "none")
+
+primaryresearchlikertplot <- ggplot_gtable(ggplot_build(primaryresearchlikertplot))
+primaryresearchlikertplot$layout$clip <- "off"
+
+counts = lastdata_grouping %>%
+  count(YearssincePhD) %>%
+  mutate(variable=NA)
+
 colnames(lastdata)[1] <- "Years since PhD"
 likert_92 <- likert(lastdata, grouping = lastdata_grouping$YearssincePhD)
-plot(likert_92)
+yearslikertplot = plot(likert_92) + 
+  geom_text(data=counts,
+            aes(label=format(n,big.mark=","), x=YearssincePhD, y=145), 
+            size=3, colour="black", hjust=1) +
+  scale_y_continuous(limits=c(-100,150)) +
+  coord_flip(ylim=c(-110,110)) +
+  theme(plot.margin=unit(c(0.2,2,0.2,0.2),"cm")) + theme(legend.position = "none")
 
-likert_92.mpg <- plot(likert_92) + theme(legend.position = "none")
-likert_52.mpg <- plot(likert_52) + theme(legend.position = "none")
-likert_42.mpg <- plot(likert_42)
-likert_32.mpg <- plot(likert_32) + theme(legend.position = "none")
+yearslikertplot <- ggplot_gtable(ggplot_build(yearslikertplot))
+yearslikertplot$layout$clip <- "off"
 
-lastplotgrid4panelv2 <- plot_grid(likert_92.mpg, likert_52.mpg, likert_32.mpg, likert_42.mpg, 
-                            labels = c("A", "B", "C", "D"), ncol = 1, nrow = 4,
-                            rel_heights = c(0.3, 0.3, 0.2, 0.2))
+counts = lastdata_grouping %>%
+  count(WhereLive) %>%
+  mutate(variable=NA)
 
-save_plot("lastplotgrid4panelv2.jpg", lastplotgrid4panelv2, base_width = 9, base_height = 15)
-```
-
-```{r, q1-2panelcrosstabfig, warning=FALSE}
 colnames(lastdata)[1] <- "Geographic location"
 likert_22 <- likert(lastdata, grouping = lastdata_grouping$WhereLive)
-plot(likert_22)
+wherelivelikertplot = plot(likert_22) + 
+  geom_text(data=counts,
+            aes(label=format(n,big.mark=","), x=WhereLive, y=145), 
+            size=3, colour="black", hjust=1) +
+  scale_y_continuous(limits=c(-100,150)) +
+  coord_flip(ylim=c(-110,110)) +
+  theme(plot.margin=unit(c(0.2,2,0.2,0.2),"cm")) + theme(legend.position = "none")
+
+wherelivelikertplot <- ggplot_gtable(ggplot_build(wherelivelikertplot))
+wherelivelikertplot$layout$clip <- "off"
+
+counts = lastdata_grouping %>%
+  count(Interdisciplinary) %>%
+  mutate(variable=NA)
 
 colnames(lastdata)[1] <- "Frequency of interdisciplinary research"
 likert_72 <- likert(lastdata, grouping = lastdata_grouping$Interdisciplinary)
-plot(likert_72)
+interdisciplinarylikertplot = plot(likert_72) + 
+  geom_text(data=counts,
+            aes(label=format(n,big.mark=","), x=Interdisciplinary, y=145), 
+            size=3, colour="black", hjust=1) +
+  scale_y_continuous(limits=c(-100,150)) +
+  coord_flip(ylim=c(-110,110)) +
+  theme(plot.margin=unit(c(0.2,2,0.2,0.2),"cm")) 
 
-likert_72.mpg <- plot(likert_72)
-likert_22.mpg <- plot(likert_22) + theme(legend.position = "none")
+interdisciplinarylikertplot <- ggplot_gtable(ggplot_build(interdisciplinarylikertplot))
+interdisciplinarylikertplot$layout$clip <- "off"
 
-lastplotgrid2panelv2 <- plot_grid(likert_22.mpg, likert_72.mpg, 
-                            labels = c("A", "B"), ncol = 1, nrow = 2,
-                            rel_heights = c(0.5, 0.5))
 
-save_plot("lastplotgrid2panelv2.jpg", lastplotgrid2panelv2, base_width = 9, base_height = 10)
+lastplotgrid6panel <- plot_grid(yearslikertplot, wherelivelikertplot, primaryresearchlikertplot, depttypelikertplot, basicappliedlikertplot, interdisciplinarylikertplot, 
+                            labels = c("A", "B", "C", "D", "E", "F"), ncol = 1, nrow = 6,
+                            rel_heights = c(0.20, 0.2, 0.2, 0.15, 0.12, 0.23))
+
+save_plot("lastplotgrid6panel.jpg", lastplotgrid6panel, base_width = 9, base_height = 15)
 ```
+
 
 ### Does whether people pay attention to a CV statement vary based on age, country, research area, department and/or their views on last authorship?
 
