@@ -931,6 +931,13 @@ currentbarplotregion
 
 save_plot("currentbarplotregion.jpg", currentbarplotregion, base_width = 8, base_height = 4)
 ```
+```{r, combining plots related to corresponding authorship views into one}
+correspondingplotgrid4panel <- plot_grid(currentlineplot, currentbarplotecoevo, currentbarplotdepttype, currentbarplotregion, 
+                            labels = c("A", "B", "C", "D"), ncol = 1, nrow = 4,
+                            rel_heights = c(0.25, 0.25, 0.25, 0.25))
+
+save_plot("correspondingplotgrid4panel.jpg", correspondingplotgrid4panel, base_width = 8, base_height = 13)
+```
 
 ## Analysis of data on papers in Ecology 1956-2016
 
