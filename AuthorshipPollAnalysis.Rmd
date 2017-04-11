@@ -1172,3 +1172,11 @@ threepanellineplot <- ggdraw() +
 
 save_plot("threepanellineplot.jpg", threepanellineplot, base_width = 8, base_height = 12)
 ```
+
+```{r, 2016 corresponding authorship summary}
+corr2016summary <- timedata %>%
+  filter(Year > 2015) %>%
+  group_by(Correspondence) %>%
+  summarise(n=n()) %>%
+  mutate(rel.freq = round(100 * n/sum(n), 0))
+```
