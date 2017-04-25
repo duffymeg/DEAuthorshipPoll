@@ -955,12 +955,12 @@ save_plot("correspondingplotgrid4panel.jpg", correspondingplotgrid4panel, base_w
 ## Analysis of data on papers in Ecology 1956-2016
 
 ```{r, import data on authorship over time}
-timedata <- read.csv("Authorshipacrosstime.csv", na.strings="?")
+timedata <- read.csv("AuthorshipacrosstimewithOikos.csv", na.strings="?")
 str(timedata)
 
-Journal = c("Evolution","Evolution","Evolution","Evolution","Evolution","AmNat","AmNat","AmNat","AmNat","AmNat")
-Year = c(1956,1966,1976,1986,1996,1956,1966,1976,1986,1996)
-Number.authors = c(1,1,1,1,1,1,1,1,1,1)
+Journal = c("Evolution","Evolution","Evolution","Evolution","Evolution","AmNat","AmNat","AmNat","AmNat","AmNat","Oikos","Oikos","Oikos","Oikos","Oikos")
+Year = c(1956,1966,1976,1986,1996,1956,1966,1976,1986,1996,1956,1966,1976,1986,1996)
+Number.authors = c(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)
 #adding these as ones so I can make the box widths equal; will color the boxes white below so they don't appear.
 
 missingdf3 <- data.frame(Journal, Year, Number.authors)
@@ -987,6 +987,7 @@ save_plot("timeplot.jpg", timeplot, base_width = 6, base_height = 4)
 ```{r, plot number of authors over time including Evolution}
 timeplotwithevol <- timedatamerge %>%
   filter(Journal != c("AmNat")) %>%
+  filter(Journal != c("Oikos")) %>%
   ggplot(aes(x=Year,y=Number.authors,fill=Journal,group=interaction(Journal,Year))) +
   scale_fill_manual(values=c("white","#999999")) +
   geom_boxplot(width=4) +
@@ -1005,7 +1006,7 @@ timeplotwithevol
 timeplotalljournals <- timedatamerge %>%
   filter(Year>2000) %>%
   ggplot(aes(x=Year,y=Number.authors,fill=Journal,group=interaction(Journal,Year))) +
-  scale_fill_manual(values=c("white","#999999","#CCCCCC")) +
+  scale_fill_manual(values=c("white","#999999","#F0E442","#56B4E9")) +
   geom_boxplot(width=4) +
   theme_bw() + 
   ggtitle("Number of authors of articles in first and/or \nsecond issue of journal, 2001-2016") +
@@ -1029,8 +1030,8 @@ save_plot("timeplotgrid2panel.jpg", timeplotgrid2panel, base_width = 8, base_hei
 ```{r, plot showing all three journals for whole time period with normal-looking boxes}
 timeplotalljournalsallyears <- timedatamerge %>%
   ggplot(aes(x=Year,y=Number.authors,fill=Journal,group=interaction(Journal,Year),color=interaction(Journal,Year))) +
-  scale_fill_manual(values=c("white","#999999","#CCCCCC")) +
-  scale_color_manual(values=c("white","black","white","white","black","white","white","black","white","white","black","white","white","black","white","black","black","black","black","black","black","black","black","black","black","black","black"),guide=FALSE) +
+  scale_fill_manual(values=c("white","#999999","#F0E442","#56B4E9")) +
+  scale_color_manual(values=c("white","black","white","white","white","black","white","white","white","black","white","white","white","black","white","white","white","black","white","white","black","black","black","black","black","black","black","black","black","black","black","black","black","black","black","black"),guide=FALSE) +
   geom_boxplot(width=4) +
   theme_bw() + 
   ggtitle("Number of authors of articles in first and/or \nsecond issue of journal, 1956-2016") +
@@ -1082,7 +1083,8 @@ timecorrlineplotecol <- timesummary %>%
   ggtitle("Corresponding author position for articles in \nfirst or second issue of Ecology") +
   scale_x_continuous(breaks=c(2001,2006,2011,2016)) +
   scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73", "#000000","#0072B2")) +
-  ylab("Percent")
+  ylab("Percent") +
+  ylim(0,100)
 
 timecorrlineplotecol
 
@@ -1123,7 +1125,8 @@ timecorrlineplotevol <- timesummaryevol %>%
   ggtitle("Corresponding author position for articles in \nfirst issue of Evolution") +
   scale_x_continuous(breaks=c(2001,2006,2011,2016)) +
   scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73", "#000000","#0072B2")) +
-  ylab("Percent")
+  ylab("Percent") +
+  ylim(0,100)
 
 twopanellineplot <- ggdraw() +
   draw_plot(timecorrlineplotecol,0,0.5,1.0,0.5) +
@@ -1171,6 +1174,46 @@ threepanellineplot <- ggdraw() +
   draw_plot(timecorrlineplotevol,0,0,1.0,0.33) 
 
 save_plot("threepanellineplot.jpg", threepanellineplot, base_width = 8, base_height = 12)
+```
+
+```{r, time plot for Oikos}
+timesummaryoikos <- timedata %>%
+  filter(Journal == c("Oikos")) %>%
+  filter(Correspondence != "NA") %>%
+  group_by(Year,Correspondence) %>%
+  summarise(n=n()) %>%
+  mutate(rel.freq = round(100 * n/sum(n), 0))
+
+timesummaryoikos$Year <- as.numeric(timesummaryoikos$Year)
+
+Year = c(2001,2001,2006,2006,2006,2011,2011,2011,2011,2016,2016,2016,2016)
+Correspondence = c("all","other","other","ND","all","ND","middle","all","other","ND","last","all","other")
+n = c(0,0,0,0,0,0,0,0,0,0,0,0,0)
+rel.freq = c(0,0,0,0,0,0,0,0,0,0,0,0,0)
+
+missingdf5 <- data.frame(Year, Correspondence, n, rel.freq)
+timesummaryoikos <- bind_rows(timesummaryoikos,missingdf5)
+
+timecorrlineplotoikos <- timesummaryoikos %>%
+  filter(Year>2000) %>%
+  mutate(Correspondence = as.character(Correspondence)) %>%
+  mutate(Correspondence = factor(Correspondence, levels=c("first","middle","last","ND","all","other"))) %>%
+  ggplot(aes(x=Year,y=rel.freq,color= Correspondence)) +
+  geom_line(stat='identity',aes(linetype=Correspondence),size=1) +
+  geom_point(aes(shape=Correspondence), size=4) +
+  ggtitle("Corresponding author position for articles in \nJanuary issue of Oikos") +
+  scale_x_continuous(breaks=c(2001,2006,2011,2016)) +
+  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73", "#000000","#0072B2")) +
+  ylab("Percent") +
+  ylim(0,100)
+
+fourpanellineplot <- ggdraw() +
+  draw_plot(timecorrlineplotecol,0,0.75,1.0,0.25) +
+  draw_plot(timecorrlineplotamnat,0,0.50,1.0,0.25) +
+  draw_plot(timecorrlineplotevol,0,0.25,1.0,0.25) +
+  draw_plot(timecorrlineplotoikos,0,0,1.0,0.25)
+
+save_plot("fourpanellineplot.jpg", fourpanellineplot, base_width = 8, base_height = 13)
 ```
 
 ```{r, 2016 corresponding authorship summary}
