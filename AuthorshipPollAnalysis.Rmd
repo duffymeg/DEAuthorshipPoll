@@ -356,6 +356,8 @@ bestcorrespondingplot
 ```
 
 ```{r, plot comparing current and best practices}
+BestCorrespondingSum$bestcurrent <- factor(BestCorrespondingSum$bestcurrent, levels = rev(levels(BestCorrespondingSum$bestcurrent)))
+
 BestCorrespondingSum$Corresponding01 <- BestCorrespondingSum$CorrespondingBest01
 BestCorrespondingSum$bestcurrent <- c("best","best","best","best","best")
 CurrentCorrespondingSum$Corresponding01 <- CurrentCorrespondingSum$CorrespondingCurrent01
@@ -377,7 +379,8 @@ combinedcorrespondingplot <- ggplot(CombinedCorrespondingSum,aes(x=Corresponding
   theme(axis.title.y=element_blank()) +
   theme(axis.title.x=element_text(size=12)) +
   theme(axis.ticks.y = element_blank()) +
-  scale_fill_manual(values=c("#999999", "#99CCFF"))
+  scale_fill_manual(values=c("#999999", "#99CCFF")) +
+  guides(fill = guide_legend(reverse=TRUE))
 
 combinedcorrespondingplot
 
@@ -1222,4 +1225,179 @@ corr2016summary <- timedata %>%
   group_by(Correspondence) %>%
   summarise(n=n()) %>%
   mutate(rel.freq = round(100 * n/sum(n), 0))
+```
+
+## REVISIONS, Using Web of Science Data
+
+```{r, using data from Web of Science to at number authors over time}
+library(stringr)
+#WoSdata <- read.csv("WoSAuthorshipData.csv")
+
+#WoSdata$numberauthors <- (str_count(WoSdata$AU, ";") +1)
+#WoSdata$numberemails <- (str_count(WoSdata$EM, ";") +1)
+
+#write.csv(WoSdata, file = "WoSdata.csv")
+
+## moved out of R to do some manipulations, now moving back in
+
+WoSdata <- read.csv("WoSdata2.csv")
+WoSdata <- subset(WoSdata, DT == "Article"| DT == "Article; Data Paper" | DT == "Article; Proceedings Paper" | DT == "Review")
+
+newtimeplot <- WoSdata %>%
+  filter(Journal == c("Ecology")) %>%
+  ggplot(aes(x=Year,y=numberauthors,fill=Journal,group=interaction(Journal,Year))) +
+  scale_fill_manual(values=c("white","#999999")) +
+  geom_boxplot(width=4) +
+  theme_bw() + 
+  ggtitle("Number of authors of articles in Ecology, 1956-2016") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_x_continuous(breaks=c(1956,1966,1976,1986,1996,2006,2016)) +
+  ylab("Number of authors") 
+
+newtimeplot
+
+save_plot("newtimeplot.jpg", newtimeplot, base_width = 6, base_height = 4)
+
+newtimeplotalljournals <- WoSdata %>%
+  filter(Year>2000) %>%
+  ggplot(aes(x=Year,y=numberauthors,fill=Journal,group=interaction(Journal,Year))) +
+  scale_fill_manual(values=c("white","#999999","#F0E442","#56B4E9")) +
+  geom_boxplot(width=4) +
+  theme_bw() + 
+  ggtitle("Number of authors per article, 2001-2016") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_x_continuous(breaks=c(2001,2006,2011,2016)) +
+  ylab("Number of authors") 
+
+newtimeplotalljournals
+
+
+save_plot("newtimeplotalljournals.jpg", newtimeplotalljournals, base_width = 6, base_height = 4)
+
+#combine plot with just ecology for all years with plot for all journals for 2001-2016
+newtimeplotgrid2panel <- plot_grid(newtimeplot, newtimeplotalljournals, 
+                            labels = c("A", "B"), ncol = 1, nrow = 2,
+                            rel_heights = c(0.5, 0.5))
+
+save_plot("newtimeplotgrid2panel.jpg", newtimeplotgrid2panel, base_width = 8, base_height = 8)
+
+ecologyWoSdata <- subset(WoSdata, Journal == "Ecology")
+
+ecologyfit <-  glm(numberauthors ~ Year, family = poisson(), data = ecologyWoSdata)
+summary(ecologyfit)
+
+recentWoSdata <- subset(WoSdata, Year > 2000)
+
+recentfit <-  glm(numberauthors ~ Year + Journal + Year*Journal, family = poisson(), data = recentWoSdata)
+summary(recentfit)
+
+recentfitnointeraction <- glm(numberauthors ~ Year + Journal, family = poisson(), data = recentWoSdata)
+
+anova(recentfit,recentfitnointeraction, test="Chi")
+
+recentfitnojournal <- glm(numberauthors ~ Year, family = poisson(), data = recentWoSdata)
+
+anova(recentfitnojournal,recentfitnointeraction, test="Chi")
+
+### Still to do: add stats in to manuscript
+```
+
+```{r, using WoS data to look at corresponding authorship over time}
+###Important note: original WoS data was inaccurate for 2001 for all journals (lots of papers without email addresses when there was one on the actual article) and for 2006 for AmNat (lots of papers with "all" email addresses, when most of those papers had one designated for correspondence). So, I manually went through the first 900 pages of each journal in 2001 (and in 2006 for AmNat) to record authorship. I did not record the number of authors while doing this, so this dataset below (with "Corresponding" at the end) cannot be used to make a figure related to number of authors.
+
+WoSdataCor <- read.csv("WoSdataCorresponding.csv")
+WoSdataCor <- subset(WoSdataCor, DT == "article" | DT == "Article"| DT == "Article; Data Paper" | DT == "Article; Proceedings Paper" | DT == "brief communication" | DT == "briefcomm" | DT == "comment" | DT == "e-article" | DT == "forum" | DT == "letter" | DT == "nathistmisc" | DT == "note" | DT == "Note" | DT == "opinion" | DT == "perspective" | DT == "report" | DT == "review" | DT == "Review" | DT == "synthesis")
+
+recentWoSdataCor <- subset(WoSdataCor, Year > 2000)
+
+newtimesummary <- recentWoSdataCor %>%
+  filter(Correspondence != "unknown") %>%
+  group_by(Journal, Year,Correspondence) %>%
+  summarise(n=n()) %>%
+  mutate(rel.freq = round(100 * n/sum(n), 0))
+
+Journal = c("AmNat","AmNat","AmNat","AmNat","AmNat","AmNat","Ecology","Ecology","Ecology","Ecology","Ecology","Ecology","Ecology","Ecology","Ecology","Evolution","Evolution","Oikos","Oikos","Oikos","Oikos","Oikos","Oikos","Oikos","Oikos","Oikos","Oikos")
+Year = c(2001,2001,2011,2011,2016,2016,2001,2001,2006,2006,2011,2011,2016,2016,2016,2006,2016,2001,2001,2006,2006,2011,2011,2011,2016,2016,2016)
+Correspondence = c("middle","ND","all","ND","all","ND","all","other","all","other","all","other","all","ND","other","ND","ND","all","other","all","ND","all","other","ND","all","other","ND")
+n = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)   
+rel.freq = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
+
+missingdfnew <- data.frame(Journal, Year, Correspondence, n, rel.freq)
+newtimesummary <- bind_rows(newtimesummary,missingdfnew)
+
+newtimesummaryamnat <- newtimesummary %>%
+  filter(Journal == c("AmNat")) 
+
+newtimecorrlineplotamnat <- newtimesummaryamnat %>%
+  filter(Year>2000) %>%
+  mutate(Correspondence = as.character(Correspondence)) %>%
+  mutate(Correspondence = factor(Correspondence, levels=c("first","middle","last","ND","all","other"))) %>%
+  ggplot(aes(x=Year,y=rel.freq,color= Correspondence)) +
+  geom_line(stat='identity',aes(linetype=Correspondence),size=1) +
+  geom_point(aes(shape=Correspondence), size=4) +
+  ggtitle("American Naturalist") +
+  scale_x_continuous(breaks=c(2001,2006,2011,2016)) +
+  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73", "#000000","#0072B2")) +
+  ylab("Percent") +
+  ylim(0,100)
+
+newtimesummaryecol <- newtimesummary %>%
+  filter(Journal == c("Ecology")) 
+
+newtimecorrlineplotecol <- newtimesummaryecol %>%
+  filter(Year>2000) %>%
+  mutate(Correspondence = as.character(Correspondence)) %>%
+  mutate(Correspondence = factor(Correspondence, levels=c("first","middle","last","ND","all","other"))) %>%
+  ggplot(aes(x=Year,y=rel.freq,color= Correspondence)) +
+  geom_line(stat='identity',aes(linetype=Correspondence),size=1) +
+  geom_point(aes(shape=Correspondence), size=4) +
+  ggtitle("Ecology") +
+  scale_x_continuous(breaks=c(2001,2006,2011,2016)) +
+  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73", "#000000","#0072B2")) +
+  ylab("Percent") +
+  ylim(0,100)
+
+newtimesummaryevol <- newtimesummary %>%
+  filter(Journal == c("Evolution")) 
+
+newtimecorrlineplotevol <- newtimesummaryevol %>%
+  filter(Year>2000) %>%
+  mutate(Correspondence = as.character(Correspondence)) %>%
+  mutate(Correspondence = factor(Correspondence, levels=c("first","middle","last","ND","all","other"))) %>%
+  ggplot(aes(x=Year,y=rel.freq,color= Correspondence)) +
+  geom_line(stat='identity',aes(linetype=Correspondence),size=1) +
+  geom_point(aes(shape=Correspondence), size=4) +
+  ggtitle("Evolution") +
+  scale_x_continuous(breaks=c(2001,2006,2011,2016)) +
+  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73", "#000000","#0072B2")) +
+  ylab("Percent") +
+  ylim(0,100)
+
+newtimesummaryoikos <- newtimesummary %>%
+  filter(Journal == c("Oikos")) 
+
+newtimecorrlineplotoikos <- newtimesummaryoikos %>%
+  filter(Year>2000) %>%
+  mutate(Correspondence = as.character(Correspondence)) %>%
+  mutate(Correspondence = factor(Correspondence, levels=c("first","middle","last","ND","all","other"))) %>%
+  ggplot(aes(x=Year,y=rel.freq,color= Correspondence)) +
+  geom_line(stat='identity',aes(linetype=Correspondence),size=1) +
+  geom_point(aes(shape=Correspondence), size=4) +
+  ggtitle("Oikos") +
+  scale_x_continuous(breaks=c(2001,2006,2011,2016)) +
+  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73", "#000000","#0072B2")) +
+  ylab("Percent") +
+  ylim(0,100)
+
+newfourpanellineplot <- ggdraw() +
+  draw_plot(newtimecorrlineplotamnat,0,0.75,1.0,0.25) +
+  draw_plot(newtimecorrlineplotecol,0,0.50,1.0,0.25) +
+  draw_plot(newtimecorrlineplotevol,0,0.25,1.0,0.25) +
+  draw_plot(newtimecorrlineplotoikos,0,0,1.0,0.25)
+
+save_plot("newfourpanellineplot.jpg", newfourpanellineplot, base_width = 8, base_height = 13)
+
+
+#still to do: stats (including adding those into manuscript)
+#step 1: make corresponding first author into a binary variable, analyze that to look at differences in that between journals and across time.
 ```
