@@ -11,17 +11,257 @@ knitr::opts_chunk$set(echo = FALSE)
 
 #What are the current views on last and corresponding authorship in ecology?
 
-###Analysis of data from Dynamic Ecology poll regarding authorship practices in ecology
-
 ## Introduction
 
 Who is the last author on a paper? Is it the person who did the least work? Or is it the PI of the lab where the work was done? When I started grad school (in 2000), the norm in ecology was still that the last author on a paper is the person who did the least work. But, more recently, it has seemed to me that the norm is that the last author on a paper is the "senior" author (usually the PI). However, if you talk with other ecologists about the topic, it's clear that there's variation in views, and that not everyone is on the same page.
 
-{add more here on literature and what others have done on similar topics -- see Evernote file for more on that}
+This project started out as a poll on the Dynamic Ecology blog, but has led to a bigger project. The code here has been updated to reflect what is in the manuscript on this (in revision for Ecology & Evolution), rather than the original blog posts. 
 
-Thinking about this topic as we were settling on authorship order for a manuscript recently led me to post [a series of tweets where I mused about authorship practices in ecology](https://twitter.com/duffy_ma/status/710917668446928896 )
-which then led me to do [a poll on Dynamic Ecology related to the topic](https://dynamicecology.wordpress.com/2016/04/06/poll-what-are-your-views-on-last-and-corresponding-authorship-in-ecology/).
-The poll was developed with input from Alex Bond, Linda Campbell, Kathy Cottingham, and Andrea Kirkwood, who all helped me think through what to ask about and how to phrase the questions and answer options. Many thanks to them for their help! And, while I'm doing acknowledgments, Auriel Fournier, Jaime Ashander, and Rayna Harris provided R help that got me over some key hurdles. Finally, this poll was confirmed as exempt from ongoing IRB review (UMich IRB #: HUM00114140). 
+## Literature review
+
+I used a combination of Web of Science data and manually searching through journals to determine the number of authors and corresponding authorship for papers in Ecology from 1956-2016 (every 10 years from 1956-1996, every five years from 2001-2016) and in American Naturalist, Evolution, and Oikos in 2001, 2006, 2011, and 2016.
+
+## Making figures and doing analyses for revised version of manuscript (incorporating suggestions from the reviewers)
+
+```{r, plotting data on number authors over time}
+library(stringr)
+library(ggplot2)
+library(dplyr)
+library(cowplot)
+
+#WoSdata <- read.csv("WoSAuthorshipData.csv")
+
+#WoSdata$numberauthors <- (str_count(WoSdata$AU, ";") +1)
+#WoSdata$numberemails <- (str_count(WoSdata$EM, ";") +1)
+
+#write.csv(WoSdata, file = "WoSdata.csv")
+
+## moved out of R to do some manipulations, now moving back in
+
+WoSdata <- read.csv("WoSdata2.csv")
+WoSdata <- subset(WoSdata, DT == "Article"| DT == "Article; Data Paper" | DT == "Article; Proceedings Paper" | DT == "Review")
+
+newtimeplot <- WoSdata %>%
+  filter(Journal == c("Ecology")) %>%
+  ggplot(aes(x=Year,y=numberauthors,fill=Journal,group=interaction(Journal,Year))) +
+  scale_fill_manual(values=c("white","#999999")) +
+  geom_boxplot(width=4) +
+  theme_bw() + 
+  ggtitle("Number of authors of articles in Ecology, 1956-2016") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_x_continuous(breaks=c(1956,1966,1976,1986,1996,2006,2016)) +
+  ylab("Number of authors") 
+
+#newtimeplot
+
+save_plot("newtimeplot.jpg", newtimeplot, base_width = 6, base_height = 4)
+
+newtimeplotalljournals <- WoSdata %>%
+  filter(Year>2000) %>%
+  ggplot(aes(x=Year,y=numberauthors,fill=Journal,group=interaction(Journal,Year))) +
+  scale_fill_manual(values=c("white","#999999","#F0E442","#56B4E9")) +
+  geom_boxplot(width=4) +
+  theme_bw() + 
+  ggtitle("Number of authors per article, 2001-2016") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_x_continuous(breaks=c(2001,2006,2011,2016)) +
+  ylab("Number of authors") 
+
+#newtimeplotalljournals
+
+
+save_plot("newtimeplotalljournals.jpg", newtimeplotalljournals, base_width = 6, base_height = 4)
+
+#combine plot with just ecology for all years with plot for all journals for 2001-2016
+newtimeplotgrid2panel <- plot_grid(newtimeplot, newtimeplotalljournals, 
+                            labels = c("A", "B"), ncol = 1, nrow = 2,
+                            rel_heights = c(0.5, 0.5))
+
+newtimeplotgrid2panel
+
+save_plot("newtimeplotgrid2panel.jpg", newtimeplotgrid2panel, base_width = 8, base_height = 8)
+```
+
+```{r, stats for data on number of authors over time}
+ecologyWoSdata <- subset(WoSdata, Journal == "Ecology")
+
+ecologyfit <-  glm(numberauthors ~ Year, family = poisson(), data = ecologyWoSdata)
+summary(ecologyfit)
+
+recentWoSdata <- subset(WoSdata, Year > 2000)
+
+recentfit <-  glm(numberauthors ~ Year + Journal + Year*Journal, family = poisson(), data = recentWoSdata)
+summary(recentfit)
+
+recentfitnointeraction <- glm(numberauthors ~ Year + Journal, family = poisson(), data = recentWoSdata)
+
+# test for significant interaction
+anova(recentfit,recentfitnointeraction, test="Chi")
+
+# test for effect of journal
+recentfitnojournal <- glm(numberauthors ~ Year, family = poisson(), data = recentWoSdata)
+
+anova(recentfitnojournal,recentfitnointeraction, test="Chi")
+
+# test for effect of year
+recentfitnoyear <- glm(numberauthors ~ Journal, family = poisson(), data = recentWoSdata)
+
+anova(recentfitnoyear,recentfitnointeraction, test="Chi")
+
+## summary statistics
+WoSdata %>%
+  filter(Journal == c("Ecology")) %>%
+  group_by(Year) %>%
+  summarise(median(numberauthors),mean(numberauthors))
+
+```
+
+```{r, figure showing corresponding authorship over time}
+###Important note: original WoS data was inaccurate for 2001 for all journals (lots of papers without email addresses when there was one on the actual article) and for 2006 for AmNat (lots of papers with "all" email addresses, when most of those papers had one designated for correspondence). So, I manually went through the first 900 pages of each journal in 2001 (and in 2006 for AmNat) to record authorship. I did not record the number of authors while doing this, so this dataset below (with "Corresponding" at the end) cannot be used to make a figure related to number of authors.
+
+WoSdataCor <- read.csv("WoSdataCorresponding.csv")
+WoSdataCor <- subset(WoSdataCor, DT == "article" | DT == "Article"| DT == "Article; Data Paper" | DT == "Article; Proceedings Paper" | DT == "brief communication" | DT == "briefcomm" | DT == "comment" | DT == "e-article" | DT == "forum" | DT == "letter" | DT == "nathistmisc" | DT == "note" | DT == "Note" | DT == "opinion" | DT == "perspective" | DT == "report" | DT == "review" | DT == "Review" | DT == "synthesis")
+
+recentWoSdataCor <- subset(WoSdataCor, Year > 2000)
+
+newtimesummary <- recentWoSdataCor %>%
+  filter(Correspondence != "unknown") %>%
+  group_by(Journal, Year,Correspondence) %>%
+  summarise(n=n()) %>%
+  mutate(rel.freq = round(100 * n/sum(n), 0))
+
+Journal = c("AmNat","AmNat","AmNat","AmNat","AmNat","AmNat","Ecology","Ecology","Ecology","Ecology","Ecology","Ecology","Ecology","Ecology","Ecology","Evolution","Evolution","Oikos","Oikos","Oikos","Oikos","Oikos","Oikos","Oikos","Oikos","Oikos","Oikos")
+Year = c(2001,2001,2011,2011,2016,2016,2001,2001,2006,2006,2011,2011,2016,2016,2016,2006,2016,2001,2001,2006,2006,2011,2011,2011,2016,2016,2016)
+Correspondence = c("middle","ND","all","ND","all","ND","all","other","all","other","all","other","all","ND","other","ND","ND","all","other","all","ND","all","other","ND","all","other","ND")
+n = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)   
+rel.freq = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
+
+missingdfnew <- data.frame(Journal, Year, Correspondence, n, rel.freq)
+newtimesummary <- bind_rows(newtimesummary,missingdfnew)
+
+newtimesummaryamnat <- newtimesummary %>%
+  filter(Journal == c("AmNat")) 
+
+newtimecorrlineplotamnat <- newtimesummaryamnat %>%
+  filter(Year>2000) %>%
+  mutate(Correspondence = as.character(Correspondence)) %>%
+  mutate(Correspondence = factor(Correspondence, levels=c("first","middle","last","ND","all","other"))) %>%
+  ggplot(aes(x=Year,y=rel.freq,color= Correspondence)) +
+  geom_line(stat='identity',aes(linetype=Correspondence),size=1) +
+  geom_point(aes(shape=Correspondence), size=4) +
+  ggtitle("American Naturalist") +
+  scale_x_continuous(breaks=c(2001,2006,2011,2016)) +
+  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73", "#000000","#0072B2")) +
+  ylab("Percent") +
+  ylim(0,100)
+
+newtimesummaryecol <- newtimesummary %>%
+  filter(Journal == c("Ecology")) 
+
+newtimecorrlineplotecol <- newtimesummaryecol %>%
+  filter(Year>2000) %>%
+  mutate(Correspondence = as.character(Correspondence)) %>%
+  mutate(Correspondence = factor(Correspondence, levels=c("first","middle","last","ND","all","other"))) %>%
+  ggplot(aes(x=Year,y=rel.freq,color= Correspondence)) +
+  geom_line(stat='identity',aes(linetype=Correspondence),size=1) +
+  geom_point(aes(shape=Correspondence), size=4) +
+  ggtitle("Ecology") +
+  scale_x_continuous(breaks=c(2001,2006,2011,2016)) +
+  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73", "#000000","#0072B2")) +
+  ylab("Percent") +
+  ylim(0,100)
+
+newtimesummaryevol <- newtimesummary %>%
+  filter(Journal == c("Evolution")) 
+
+newtimecorrlineplotevol <- newtimesummaryevol %>%
+  filter(Year>2000) %>%
+  mutate(Correspondence = as.character(Correspondence)) %>%
+  mutate(Correspondence = factor(Correspondence, levels=c("first","middle","last","ND","all","other"))) %>%
+  ggplot(aes(x=Year,y=rel.freq,color= Correspondence)) +
+  geom_line(stat='identity',aes(linetype=Correspondence),size=1) +
+  geom_point(aes(shape=Correspondence), size=4) +
+  ggtitle("Evolution") +
+  scale_x_continuous(breaks=c(2001,2006,2011,2016)) +
+  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73", "#000000","#0072B2")) +
+  ylab("Percent") +
+  ylim(0,100)
+
+newtimesummaryoikos <- newtimesummary %>%
+  filter(Journal == c("Oikos")) 
+
+newtimecorrlineplotoikos <- newtimesummaryoikos %>%
+  filter(Year>2000) %>%
+  mutate(Correspondence = as.character(Correspondence)) %>%
+  mutate(Correspondence = factor(Correspondence, levels=c("first","middle","last","ND","all","other"))) %>%
+  ggplot(aes(x=Year,y=rel.freq,color= Correspondence)) +
+  geom_line(stat='identity',aes(linetype=Correspondence),size=1) +
+  geom_point(aes(shape=Correspondence), size=4) +
+  ggtitle("Oikos") +
+  scale_x_continuous(breaks=c(2001,2006,2011,2016)) +
+  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73", "#000000","#0072B2")) +
+  ylab("Percent") +
+  ylim(0,100)
+
+newfourpanellineplot <- ggdraw() +
+  draw_plot(newtimecorrlineplotamnat,0,0.75,1.0,0.25) +
+  draw_plot(newtimecorrlineplotecol,0,0.50,1.0,0.25) +
+  draw_plot(newtimecorrlineplotevol,0,0.25,1.0,0.25) +
+  draw_plot(newtimecorrlineplotoikos,0,0,1.0,0.25)
+
+newfourpanellineplot
+
+save_plot("newfourpanellineplot.jpg", newfourpanellineplot, base_width = 8, base_height = 13)
+
+```
+
+```{r, stats for first as corresponding author position over time}
+#step 1: make corresponding first author into a binary variable, analyze that to look at differences in that between journals and across time.
+
+recentWoSdataCor$Cor01 <- ifelse(recentWoSdataCor$Correspondence=="first",1,0)
+
+corrfit <-  glm(Cor01 ~ Year + Journal + Year*Journal, family = binomial(), data = recentWoSdataCor)
+summary(corrfit)
+
+# test for significant interaction
+corrfitnointeraction <- glm(Cor01 ~ Year + Journal, family = binomial(), data = recentWoSdataCor)
+
+anova(corrfit,corrfitnointeraction, test="Chi")
+
+# test for effect of journal
+corrfitnojournal <- glm(Cor01 ~ Year, family = binomial(), data = recentWoSdataCor)
+
+anova(corrfitnojournal,corrfitnointeraction, test="Chi")
+
+# test for effect of year
+corrfitnoyear <- glm(Cor01 ~ Journal, family = binomial(), data = recentWoSdataCor)
+
+anova(corrfitnoyear,corrfitnointeraction, test="Chi")
+
+```
+```{r, stats for last as corresponding author position over time}
+#step 1: make corresponding last author into a binary variable, analyze that to look at differences in that between journals and across time.
+
+recentWoSdataCor$LastCor01 <- ifelse(recentWoSdataCor$Correspondence=="last",1,0)
+
+lastcorrfit <-  glm(LastCor01 ~ Year + Journal + Year*Journal, family = binomial(), data = recentWoSdataCor)
+summary(lastcorrfit)
+
+# test for significant interaction
+lastcorrfitnointeraction <- glm(LastCor01 ~ Year + Journal, family = binomial(), data = recentWoSdataCor)
+
+anova(lastcorrfit,lastcorrfitnointeraction, test="Chi")
+
+# test for effect of journal
+lastcorrfitnojournal <- glm(LastCor01 ~ Year, family = binomial(), data = recentWoSdataCor)
+
+anova(lastcorrfitnojournal,lastcorrfitnointeraction, test="Chi")
+
+# test for effect of year
+lastcorrfitnoyear <- glm(LastCor01 ~ Journal, family = binomial(), data = recentWoSdataCor)
+
+anova(lastcorrfitnoyear,lastcorrfitnointeraction, test="Chi")
+```
 
 ## The poll
 The poll had four main questions:  
@@ -35,7 +275,7 @@ It also asked about the respondent's primary research area, whether their resear
 
 The poll first appeared on 6 April 2016 and ran for two weeks. 
 
-## Data manipulation
+### Data manipulation related to the poll
 Four blank entries were deleted. I am a bad person and used excel to add in numeric codes for the different answers. The key is:  
 
 For the question about whether last author is the senior author:  
@@ -129,23 +369,13 @@ Department:
 4 = other  
 ```
 
-## Basic overview of responses
+### Basic overview of responses
 After removing the four blank responses, there were 1122 responses to the poll. What did the respondents look like?  
-
-```{r, make sure have github version of ggplot2}
-#install.packages("devtools")
-#devtools::install_github("tidyverse/ggplot2")
-
-#uncomment one or both of the above lines if needed; tried out the github version of ggplot to work on the bar width issue, but decided to go back to CRAN version
-```
 
 ```{r, import, message=FALSE, warning=FALSE}
 # Import data
 polldata <- read.csv("AuthorshipPollResults.csv", na.strings=".")
 # load libraries needed to run code
-library(ggplot2)
-library(dplyr)
-library(cowplot)
 library(knitr)
 require(likert)
 library(reshape2)
@@ -220,7 +450,7 @@ Department <-
 kable(Department)
 ```
 
-## Results for the four main questions
+### Results for the four main questions
 
 ### Q1: "For ecology papers, do you consider the last author to be the senior author?"
 ```{r, q1-fig}
@@ -238,33 +468,11 @@ LastSeniorSum
 as.factor(LastSeniorSum$LastSenior01)
 
 require(cowplot)
-lastseniorplot <- ggplot(LastSeniorSum,aes(x=LastSenior01,y=rel.freq,fill=LastSenior01)) +
-  geom_bar(stat="identity") +
-  ylab("Percent of responses") +
-  theme(legend.position="none") +
-  coord_flip() +
-  theme(axis.text.y = element_blank()) +
-  annotate("text", x = 1, y = 9, label = "No", hjust=0, size=3) +
-  annotate("text", x = 2, y = 9, label = "It depends, but probably no", hjust=0, size=3) +
-  annotate("text", x = 3, y = 9, label = "Not sure, but probably no", hjust=0, size=3) +
-  annotate("text", x = 4, y = 9, label = "Not sure, but probably yes", hjust=0, size=3) +
-  annotate("text", x = 5, y = 01, label = "It depends, but probably yes", hjust=0, size=3) +
-  annotate("text", x = 6, y = 01, label = "Yes", hjust=0, size=3) +
-  ggtitle("For ecology papers, \ndo you consider the last author \nto be the senior author?") +
-  theme(plot.title=element_text(size=12)) +
-  theme(axis.title.y=element_blank()) +
-  theme(axis.title.x=element_text(size=12)) +
-  theme(axis.ticks.y = element_blank())
 
-save_plot("lastseniorplot.jpg", lastseniorplot)
-
-lastseniorplot
-
-#grayscaleversion:
 LastSeniorSum$LastSenior01c <- as.factor(LastSeniorSum$LastSenior01)
-lastseniorplotgray <- ggplot(LastSeniorSum,aes(x=LastSenior01c,y=rel.freq,fill=LastSenior01c)) +
+lastseniorplot <- ggplot(LastSeniorSum,aes(x=LastSenior01c,y=rel.freq,fill=LastSenior01c)) +
   geom_bar(stat="identity") +
-  scale_fill_manual(values=c("#000000","#000000","#000000","#CCCCCC","#CCCCCC","#CCCCCC")) +
+  scale_fill_manual(values=c("#D8B365","#DFC27D","#F6E8C3","#C7EAE5","#80CDC1","#5AB4AC")) +
   ylab("Percent of responses") +
   theme(legend.position="none") +
   coord_flip() +
@@ -281,13 +489,13 @@ lastseniorplotgray <- ggplot(LastSeniorSum,aes(x=LastSenior01c,y=rel.freq,fill=L
   theme(axis.title.x=element_text(size=12)) +
   theme(axis.ticks.y = element_blank()) 
 
-lastseniorplotgray
+lastseniorplot
 
-save_plot("lastseniorplotgray.jpg", lastseniorplotgray)
+save_plot("lastseniorplot.jpg", lastseniorplot)
 ```
 
 ### Q2: "Which of the following statements most closely matches the current norms in ecology in terms of who is corresponding author?"
-```{r, q2-fig}
+```{r, q2}
 CurrentCorrespondingSum <- 
   polldata %>%
   filter(!is.na(CorrespondingCurrent01)) %>%
@@ -299,29 +507,10 @@ CurrentCorrespondingSum
 #most frequent answer (option 5) = 54%
 #option 3 = 19%, option 1 = 16%
 
-currentcorrespondingplot <- ggplot(CurrentCorrespondingSum,aes(x=CorrespondingCurrent01,y=rel.freq)) +
-  geom_bar(stat="identity") +
-  ylab("Percent of responses") +
-  theme(legend.position="none") +
-  coord_flip() +
-  theme(axis.text.y = element_blank()) +
-  annotate("text", x = 1, y = 16.7, label = "The corresponding author is the person that has taken \nresponsibility for fielding questions about the paper \npost-publication",hjust=0,size=2.5) +
-  annotate("text", x = 2, y = 3.5, label = "The corresponding author is the person with the most stable contact info \nand/or internet access",hjust=0,size=2.5) +
-  annotate("text", x = 3, y = 19.5, label = "The corresponding author is usually the person who \nuploaded the files (usually the first author)",hjust=0,size=2.5) +
-  annotate("text", x = 4, y = 7.6, label = "The corresponding author is usually the senior author",hjust=0,size=2.5) +
-  annotate("text", x = 5, y = 1, color="white", label = "The corresponding author uploaded the files, managed the revisions and \nwrote the response to reviewers, and took responsibility for the paper after \npublication",hjust=0,size=2.5) +
-  ggtitle("Which of the following statements most \nclosely matches the current norms in \necology in terms of who is corresponding author?") +
-  theme(plot.title=element_text(size=12)) +
-  theme(axis.title.y=element_blank()) +
-  theme(axis.title.x=element_text(size=12)) +
-  theme(axis.ticks.y = element_blank())
-
-save_plot("currentcorrespondingplot.jpg", currentcorrespondingplot)
-currentcorrespondingplot
 ```
 
 ### Q3: "Which of the following statements would be best practice in terms of who is corresponding author?"
-```{r, q3-fig}
+```{r, q3}
 BestCorrespondingSum <- 
   polldata %>%
   filter(!is.na(CorrespondingBest01)) %>%
@@ -332,32 +521,9 @@ BestCorrespondingSum <-
 BestCorrespondingSum
 #most frequent answer (option 5) = 61%
 #option 1 = 24%
-
-bestcorrespondingplot <- ggplot(BestCorrespondingSum,aes(x=CorrespondingBest01,y=rel.freq)) +
-  geom_bar(stat="identity") +
-  ylab("Percent of responses") +
-  theme(legend.position="none") +
-  coord_flip() +
-  theme(axis.text.y = element_blank()) +
-  annotate("text", x = 1, y = 24.5, label = "The corresponding author should be the person \nthat has taken responsibility for fielding questions \nabout the paper post-publication",hjust=0,size=2.5) +
-  annotate("text", x = 2, y = 5, label = "The corresponding author should be the person with the most stable \ncontact info and/or internet access",hjust=0,size=2.5) +
-  annotate("text", x = 3, y = 9, label = "The corresponding author should be whichever person uploaded \nthe files (usually the first author)",hjust=0,size=2.5) +
-  annotate("text", x = 4, y = 5, label = "The corresponding author should be the senior author",hjust=0,size=2.5) +
-  annotate("text", x = 5, y = 1, color="white", label = "The corresponding author should be the person who uploaded the files, \nmanaged the revisions and wrote the response to reviewers, \nand took responsibility for the paper after publication",hjust=0,size=2.5) +
-  ggtitle("Which of the following statements would be the \nbest practice in terms of who is \ncorresponding author?") +
-  theme(plot.title=element_text(size=12)) +
-  theme(axis.title.y=element_blank()) +
-  theme(axis.title.x=element_text(size=12)) +
-  theme(axis.ticks.y = element_blank()) +
-  ylim(0,65)
-
-save_plot("bestcorrespondingplot.jpg", bestcorrespondingplot, base_width = 6, base_height = 4)
-bestcorrespondingplot
 ```
 
 ```{r, plot comparing current and best practices}
-BestCorrespondingSum$bestcurrent <- factor(BestCorrespondingSum$bestcurrent, levels = rev(levels(BestCorrespondingSum$bestcurrent)))
-
 BestCorrespondingSum$Corresponding01 <- BestCorrespondingSum$CorrespondingBest01
 BestCorrespondingSum$bestcurrent <- c("best","best","best","best","best")
 CurrentCorrespondingSum$Corresponding01 <- CurrentCorrespondingSum$CorrespondingCurrent01
@@ -370,23 +536,23 @@ combinedcorrespondingplot <- ggplot(CombinedCorrespondingSum,aes(x=Corresponding
   ylab("Percent of responses") +
   coord_flip() +
   theme(axis.text.y = element_blank()) +
-  annotate("text", x = 1, y = 24.5, label = "The corresponding author should be the person \nthat has taken responsibility for fielding questions \nabout the paper post-publication",hjust=0,size=4) +
-  annotate("text", x = 2, y = 5, label = "The corresponding author should be the person with the most stable \ncontact info and/or internet access",hjust=0,size=4) +
-  annotate("text", x = 3, y = 20, label = "The corresponding author should be whichever person \nuploaded the files (usually the first author)",hjust=0,size=4) +
-  annotate("text", x = 4, y = 8, label = "The corresponding author should be the senior author",hjust=0,size=4) +
-  annotate("text", x = 5, y = 1, color="black", label = "The corresponding author should be the person who uploaded the files, \nmanaged the revisions and wrote the response to reviewers, \nand took responsibility for the paper after publication",hjust=0,size=4) +
+  annotate("text", x = 1, y = 24.5, label = "The corresponding author is/should be the \nperson that has taken responsibility for fielding \nquestions about the paper post-publication",hjust=0,size=4) +
+  annotate("text", x = 2, y = 5, label = "The corresponding author is/should be the person with the most stable \ncontact info and/or internet access",hjust=0,size=4) +
+  annotate("text", x = 3, y = 20, label = "The corresponding author is/should be whichever \nperson uploaded the files (usually the first author)",hjust=0,size=4) +
+  annotate("text", x = 4, y = 8, label = "The corresponding author is/should be the senior author",hjust=0,size=4) +
+  annotate("text", x = 5, y = 1, color="black", label = "The corresponding author is/should be the person who uploaded \nthe files, managed the revisions and wrote the response  \nto reviewers, and took responsibility for the paper after publication",hjust=0,size=4) +
   theme(plot.title=element_text(size=12)) +
   theme(axis.title.y=element_blank()) +
   theme(axis.title.x=element_text(size=12)) +
   theme(axis.ticks.y = element_blank()) +
-  scale_fill_manual(values=c("#999999", "#99CCFF")) +
+  scale_fill_manual(values=c("#999999", "#56B4E9")) +
   guides(fill = guide_legend(reverse=TRUE))
 
 combinedcorrespondingplot
 
 save_plot("combinedcorrespondingplot.jpg", combinedcorrespondingplot, base_width = 8, base_height = 6)
 
-## NOTE: The above figure is Figure 3 for the manuscript.
+## NOTE: The above figure is Figure 6 for the manuscript.
 ```
 
 ### Q4: "If someone includes a statement on his/her CV indicating they have used a first/last author emphasis, do you pay attention to that?"
@@ -404,36 +570,16 @@ CVStatementSum
 #most people either pay attention to such a statement or think they would: (options 3+4 = 71%)
 #but the proportion of people who would ignore such a statement isn't exactly trivial!
 
-CVstatementplot <- ggplot(CVStatementSum,aes(x=CVStatement01,y=rel.freq,fill=CVStatement01)) +
-  geom_bar(stat="identity") +
-  ylab("Percent of responses") +
-  theme(legend.position="none") +
-  coord_flip() +
-  theme(axis.text.y = element_blank()) +
-  annotate("text", x = 1, y = 1, color="white", label = "No",hjust=0,size=2.5) +
-  annotate("text", x = 2, y = 1, color="white", label = "I have never seen this, but \nwould probably not pay \nattention to it",hjust=0,size=2.5) +
-  annotate("text", x = 3, y = 1, color="black", label = "I have never seen this, but would probably pay attention to it",hjust=0,size=2.5) +
-  annotate("text", x = 4, y = 1, color="black", label = "Yes",hjust=0,size=2.5) +
-  ggtitle("If someone includes a statement on his/her \nCV indicating they have used a first/last \nauthor emphasis, do you pay attention to that?") +
-  theme(plot.title=element_text(size=12)) +
-  theme(axis.title.y=element_blank()) +
-  theme(axis.title.x=element_text(size=12)) +
-  theme(axis.ticks.y = element_blank())
-
-save_plot("CVstatementplot.jpg", CVstatementplot)
-CVstatementplot
-
-#grayscale version:
 CVStatementSum$CVStatement01c <- as.factor(CVStatementSum$CVStatement01)
-CVstatementplotgray <- ggplot(CVStatementSum,aes(x=CVStatement01c,y=rel.freq,fill=CVStatement01c)) +
+CVstatementplot <- ggplot(CVStatementSum,aes(x=CVStatement01c,y=rel.freq,fill=CVStatement01c)) +
   geom_bar(stat="identity") +
-  scale_fill_manual(values=c("#000000","#000000","#CCCCCC","#CCCCCC")) +
+  scale_fill_manual(values=c("#D8B365","#F6E8C3","#C7EAE5","#5AB4AC")) +
   ylab("Percent of responses") +
   theme(legend.position="none") +
   coord_flip() +
   theme(axis.text.y = element_blank()) +
-  annotate("text", x = 1, y = 1, color="white", label = "No",hjust=0,size=3.5) +
-  annotate("text", x = 2, y = 1, color="white", label = "I have never seen this, \nbut would probably not \npay attention to it",hjust=0,size=3.5) +
+  annotate("text", x = 1, y = 1, color="black", label = "No",hjust=0,size=3.5) +
+  annotate("text", x = 2, y = 1, color="black", label = "I have never seen this, \nbut would probably not \npay attention to it",hjust=0,size=3.5) +
   annotate("text", x = 3, y = 1, color="black", label = "I have never seen this, but would probably \npay attention to it",hjust=0,size=3.5) +
   annotate("text", x = 4, y = 1, color="black", label = "Yes",hjust=0,size=3.5) +
   ggtitle("If someone includes a statement on his/her \nCV indicating they have used a first/last \nauthor emphasis, do you pay attention to that?") +
@@ -442,18 +588,16 @@ CVstatementplotgray <- ggplot(CVStatementSum,aes(x=CVStatement01c,y=rel.freq,fil
   theme(axis.title.x=element_text(size=12)) +
   theme(axis.ticks.y = element_blank())
 
-save_plot("CVstatementplotgray.jpg", CVstatementplotgray)
-CVstatementplotgray
+save_plot("CVstatementplot.jpg", CVstatementplot)
+CVstatementplot
 ```
 
-```{r, combined Figure 1 for paper}
-figure1 <- plot_grid(lastseniorplotgray, CVstatementplotgray, labels = c("A", "B"), nrow = 2, align = "v")
+```{r, combined Figure 4 for paper}
+figure4 <- plot_grid(lastseniorplot, CVstatementplot, labels = c("A", "B"), nrow = 2, align = "v")
 
-figure1
+figure4
 
-save_plot("figure1.jpg", figure1, base_width = 4, base_height = 8)
-
-
+save_plot("figure4.jpg", figure4, base_width = 4, base_height = 8)
 
 ```
 
@@ -530,12 +674,12 @@ lastdata_grouping$YearssincePhD <- lastdata_grouping %>%
   use_series(YearssincePhD) %>%
   plyr::mapvalues(., c(">20","0 (current students should choose this)","10-Jun","15-Nov", "16-20", "5-Jan", "I do not have a PhD and am not a current student"), c(">20", "0","6-10","11-15", "16-20", "1-5", "no PhD, not student"))
 
-lastdata_grouping$PrimaryResearch <- lastdata_grouping %>%
-  use_series(PrimaryResearch) %>%
-  plyr::mapvalues(., c("Biology other than EEB","Ecology (primarily computational-based)",
-                       "Ecology (primarily field-based)","Ecology (primarily wet-lab based, including molecular ecology)", 
-                       "Evolutionary biology (primarily molecular)", "Evolutionary biology (primarily organismal)", "Outside biology"), 
-                  c("Biology Other", "Comp Ecol","Field Ecol","Lab Mol Ecol", "Mol Evol", "Organismal Evol", "Other"))
+#lastdata_grouping$PrimaryResearch <- lastdata_grouping %>%
+#  use_series(PrimaryResearch) %>%
+#  plyr::mapvalues(., c("Biology other than EEB","Ecology (primarily computational-based)",
+#                       "Ecology (primarily field-based)","Ecology (primarily wet-lab based, including molecular ecology)", 
+#                       "Evolutionary biology (primarily molecular)", "Evolutionary biology (primarily organismal)", "Outside biology"), 
+#                  c("Biology Other", "Comp Ecol","Field Ecol","Lab Mol Ecol", "Mol Evol", "Organismal Evol", "Other"))
 
 
 lastdata_grouping$YearssincePhD <- factor(lastdata_grouping$YearssincePhD, 
@@ -662,6 +806,48 @@ lastplotgrid6panel <- plot_grid(yearslikertplot, wherelivelikertplot, primaryres
 save_plot("lastplotgrid6panel.jpg", lastplotgrid6panel, base_width = 9, base_height = 15)
 ```
 
+```{r, stats related to views on last authorship}
+## CAREEER STAGE
+polldata$LastSeniorYes <- ifelse(polldata$LastSenior01>4,1,0)
+polldatacareerstageanalysis <- subset(polldata, PhD01 < 7)
+
+polldatacareerstageanalysisfit <-  glm(LastSeniorYes ~ ordered(PhD01), family = binomial(link="logit"), data = polldatacareerstageanalysis)
+summary(polldatacareerstageanalysisfit)
+
+# comparing to analysis w/year of PhD as a factor to compare
+polldatacareerstageanalysisfitfactor <-  glm(LastSeniorYes ~ factor(PhD01), family = binomial(link="logit"), data = polldatacareerstageanalysis)
+summary(polldatacareerstageanalysisfitfactor)
+
+# and now comparing to it with PhD as numeric, again just to compare
+polldatacareerstageanalysisfitnumeric <-  glm(LastSeniorYes ~ PhD01, family = binomial(link="logit"), data = polldatacareerstageanalysis)
+summary(polldatacareerstageanalysisfitnumeric)
+
+## WHERE LIVE
+polldatawhereliveanalysis <- subset(polldata, WhereLive01 == 4 | WhereLive01 == 5)
+polldatawherelivefit <-  glm(LastSeniorYes ~ WhereLive, family = binomial(link="logit"), data = polldatawhereliveanalysis)
+summary(polldatawherelivefit)
+
+## ECOLOGY VS. EVOLUTION
+polldataecoevoanalysis <- subset(polldata, ecoevo != "other")
+polldataecoevofit <-  glm(LastSeniorYes ~ ecoevo, family = binomial(link="logit"), data = polldataecoevoanalysis)
+summary(polldataecoevofit)
+
+## DEPT TYPE
+polldatadeptfit <-  glm(LastSeniorYes ~ factor(Dept01), family = binomial(link="logit"), data = polldata)
+summary(polldatadeptfit)
+
+## BASIC VS. APPLIED
+polldatabasicappliedfit <-  glm(LastSeniorYes ~ BasicApplied, family = binomial(link="logit"), data = polldata)
+summary(polldatabasicappliedfit)
+
+## INTERDISCIPLINARITY
+polldatainterfit <-  glm(LastSeniorYes ~ ordered(Inter01), family = binomial(link="logit"), data = polldata)
+summary(polldatainterfit)
+
+## COMPARING TO OUTPUT OF ONE BIG MODEL (note: This model isn't quite the right form, because I'm making the ordinal variables into factors, but want to see if there's general consistency in the approaches)
+fullmodelfit <- glm(LastSeniorYes ~ factor(PhD01) + WhereLive + ecoevo + factor(Dept01) + BasicApplied + factor(Inter01), family = binomial(link="logit"), data = polldata)
+summary(fullmodelfit)
+```
 
 ### Does whether people pay attention to a CV statement vary based on age, country, research area, department and/or their views on last authorship?
 
@@ -955,449 +1141,41 @@ correspondingplotgrid4panel <- plot_grid(currentlineplot, currentbarplotecoevo, 
 save_plot("correspondingplotgrid4panel.jpg", correspondingplotgrid4panel, base_width = 8, base_height = 13)
 ```
 
-## Analysis of data on papers in Ecology 1956-2016
 
-```{r, import data on authorship over time}
-timedata <- read.csv("AuthorshipacrosstimewithOikos.csv", na.strings="?")
-str(timedata)
+```{r, stats for corresponding authorship question}
+## CAREEER STAGE
+polldata$FullResYes <- ifelse(polldata$CorrespondingCurrent01==5,1,0)
 
-Journal = c("Evolution","Evolution","Evolution","Evolution","Evolution","AmNat","AmNat","AmNat","AmNat","AmNat","Oikos","Oikos","Oikos","Oikos","Oikos")
-Year = c(1956,1966,1976,1986,1996,1956,1966,1976,1986,1996,1956,1966,1976,1986,1996)
-Number.authors = c(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)
-#adding these as ones so I can make the box widths equal; will color the boxes white below so they don't appear.
+polldatacareerstageanalysis2 <- subset(polldata, PhD01 < 7)
 
-missingdf3 <- data.frame(Journal, Year, Number.authors)
-timedatamerge <- bind_rows(timedata,missingdf3)
-```
+polldatacareerstageanalysisfit2 <-  glm(FullResYes ~ ordered(PhD01), family = binomial(link="logit"), data = polldatacareerstageanalysis2)
+summary(polldatacareerstageanalysisfit2)
 
-```{r, plot number of authors over time}
-timeplot <- timedata %>%
-  filter(Journal == c("Ecology")) %>%
-  ggplot(aes(x=Year,y=Number.authors,fill=Journal,group=interaction(Journal,Year))) +
-  scale_fill_manual(values=c("white","#999999")) +
-  geom_boxplot(width=4) +
-  theme_bw() + 
-  ggtitle("Number of authors of articles in first or \nsecond issue of Ecology, 1956-2016") +
-  theme(plot.title = element_text(hjust = 0.5)) +
-  scale_x_continuous(breaks=c(1956,1966,1976,1986,1996,2006,2016)) +
-  ylab("Number of authors") 
+# comparing to analysis w/year of PhD as a factor to compare
+polldatacareerstageanalysisfitfactor2 <-  glm(FullResYes ~ factor(PhD01), family = binomial(link="logit"), data = polldatacareerstageanalysis2)
+summary(polldatacareerstageanalysisfitfactor2)
 
-timeplot
+# and now comparing to it with PhD as numeric, again just to compare
+polldatacareerstageanalysisfitnumeric2 <-  glm(FullResYes ~ PhD01, family = binomial(link="logit"), data = polldatacareerstageanalysis2)
+summary(polldatacareerstageanalysisfitnumeric2)
 
-save_plot("timeplot.jpg", timeplot, base_width = 6, base_height = 4)
-```
+## WHERE LIVE
+polldatawhereliveanalysis2 <- subset(polldata, WhereLive01 == 4 | WhereLive01 == 5)
+polldatawherelivefit2 <-  glm(FullResYes ~ WhereLive, family = binomial(link="logit"), data = polldatawhereliveanalysis2)
+summary(polldatawherelivefit2)
 
-```{r, plot number of authors over time including Evolution}
-timeplotwithevol <- timedatamerge %>%
-  filter(Journal != c("AmNat")) %>%
-  filter(Journal != c("Oikos")) %>%
-  ggplot(aes(x=Year,y=Number.authors,fill=Journal,group=interaction(Journal,Year))) +
-  scale_fill_manual(values=c("white","#999999")) +
-  geom_boxplot(width=4) +
-  theme_bw() + 
-  ggtitle("Number of authors of articles in first or \nsecond issue of journal, 1956-2016") +
-  theme(plot.title = element_text(hjust = 0.5)) +
-  scale_x_continuous(breaks=c(1956,1966,1976,1986,1996,2006,2016)) +
-  ylab("Number of authors") +
-  ylim(0,20)
+## ECOLOGY VS. EVOLUTION
+polldataecoevoanalysis2 <- subset(polldata, ecoevo != "other")
+polldataecoevofit2 <-  glm(FullResYes ~ ecoevo, family = binomial(link="logit"), data = polldataecoevoanalysis2)
+summary(polldataecoevofit2)
 
-timeplotwithevol
-#Still need to fix box width issue in this figure
-```
+## DEPT TYPE
+polldatadepttypeanalysis2 <- subset(polldata, Dept01 < 4)
+polldatadeptfit2 <-  glm(FullResYes ~ factor(Dept01), family = binomial(link="logit"), data = polldatadepttypeanalysis2)
+summary(polldatadeptfit2)
 
-```{r, plot number of authors 2001-2016 for all journals}
-timeplotalljournals <- timedatamerge %>%
-  filter(Year>2000) %>%
-  ggplot(aes(x=Year,y=Number.authors,fill=Journal,group=interaction(Journal,Year))) +
-  scale_fill_manual(values=c("white","#999999","#F0E442","#56B4E9")) +
-  geom_boxplot(width=4) +
-  theme_bw() + 
-  ggtitle("Number of authors of articles in first and/or \nsecond issue of journal, 2001-2016") +
-  theme(plot.title = element_text(hjust = 0.5)) +
-  scale_x_continuous(breaks=c(2001,2006,2011,2016)) +
-  ylab("Number of authors") 
 
-timeplotalljournals
-
-
-save_plot("timeplotalljournals.jpg", timeplotalljournals, base_width = 6, base_height = 4)
-
-#combine plot with just ecology for all years with plot for all journals for 2001-2016
-timeplotgrid2panel <- plot_grid(timeplot, timeplotalljournals, 
-                            labels = c("A", "B"), ncol = 1, nrow = 2,
-                            rel_heights = c(0.5, 0.5))
-
-save_plot("timeplotgrid2panel.jpg", timeplotgrid2panel, base_width = 8, base_height = 8)
-```
-
-```{r, plot showing all three journals for whole time period with normal-looking boxes}
-timeplotalljournalsallyears <- timedatamerge %>%
-  ggplot(aes(x=Year,y=Number.authors,fill=Journal,group=interaction(Journal,Year),color=interaction(Journal,Year))) +
-  scale_fill_manual(values=c("white","#999999","#F0E442","#56B4E9")) +
-  scale_color_manual(values=c("white","black","white","white","white","black","white","white","white","black","white","white","white","black","white","white","white","black","white","white","black","black","black","black","black","black","black","black","black","black","black","black","black","black","black","black"),guide=FALSE) +
-  geom_boxplot(width=4) +
-  theme_bw() + 
-  ggtitle("Number of authors of articles in first and/or \nsecond issue of journal, 1956-2016") +
-  theme(plot.title = element_text(hjust = 0.5)) +
-  scale_x_continuous(breaks=c(1956,1966,1976,1986,1996,2006,2016)) +
-  ylab("Number of authors") 
-
-timeplotalljournalsallyears
-
-
-save_plot("timeplotalljournalsallyears.jpg", timeplotalljournalsallyears, base_width = 6, base_height = 4)
-
-```
-
-```{r, plot of corresponding authors over time}
-
-timesummary <- timedata %>%
-  filter(Journal == c("Ecology")) %>%
-  group_by(Year,Correspondence) %>%
-  summarise(n=n()) %>%
-  mutate(rel.freq = round(100 * n/sum(n), 0))
-
-Year = c(2006,2011,2016,2001,2006,2011,2016,2001,2006,2011,2016)
-Correspondence = c("ND","ND","ND","all","all","all","all","other","other","other","other")
-n = c(0,0,0,0,0,0,0,0,0,0,0)
-rel.freq = c(0,0,0,0,0,0,0,0,0,0,0)
-
-missingdf <- data.frame(Year, Correspondence, n, rel.freq)
-timesummary <- bind_rows(timesummary,missingdf)
-
-timecorrplotecol <- timesummary %>%
-  filter(Year>2000) %>%
-  mutate(Correspondence = as.character(Correspondence)) %>%
-  mutate(Correspondence = factor(Correspondence, levels=c("first","middle","last","ND","all","other"))) %>%
-  ggplot(aes(x=Year,y=rel.freq,fill= Correspondence)) +
-  geom_bar(stat='identity',position=position_dodge(),color='black') +
-  ggtitle("Corresponding author position for articles in \nfirst or second issue of Ecology") +
-  scale_x_continuous(breaks=c(2001,2006,2011,2016)) +
-  scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442","#0072B2")) +
-  ylab("Percent")
-
-timecorrlineplotecol <- timesummary %>%
-  filter(Year>2000) %>%
-  mutate(Correspondence = as.character(Correspondence)) %>%
-  mutate(Correspondence = factor(Correspondence, levels=c("first","middle","last","ND","all","other"))) %>%
-  ggplot(aes(x=Year,y=rel.freq,color= Correspondence)) +
-  geom_line(stat='identity',aes(linetype=Correspondence),size=1) +
-  geom_point(aes(shape=Correspondence), size=4) +
-  ggtitle("Corresponding author position for articles in \nfirst or second issue of Ecology") +
-  scale_x_continuous(breaks=c(2001,2006,2011,2016)) +
-  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73", "#000000","#0072B2")) +
-  ylab("Percent") +
-  ylim(0,100)
-
-timecorrlineplotecol
-
-timesummaryevol <- timedata %>%
-  filter(Journal == c("Evolution")) %>%
-  group_by(Year,Correspondence) %>%
-  summarise(n=n()) %>%
-  mutate(rel.freq = round(100 * n/sum(n), 0))
-
-timesummaryevol$Year <- as.numeric(timesummaryevol$Year)
-
-Year = c(2001,2006,2011,2016,2006,2011,2016,2011,2016,2016)
-Correspondence = c("ND","ND","ND","ND","middle","middle","middle","other","other","all")
-n = c(0,0,0,0,0,0,0,0,0,0)
-rel.freq = c(0,0,0,0,0,0,0,0,0,0)
-
-missingdf2 <- data.frame(Year, Correspondence, n, rel.freq)
-timesummaryevol <- bind_rows(timesummaryevol,missingdf2)
-
-timecorrplotevol <- timesummaryevol %>%
-  filter(Year>2000) %>%
-  mutate(Correspondence = as.character(Correspondence)) %>%
-  mutate(Correspondence = factor(Correspondence, levels=c("first","middle","last","ND","all","other"))) %>%
-  ggplot(aes(x=Year,y=rel.freq,fill= Correspondence)) +
-  geom_bar(stat='identity',position=position_dodge(),color='black') +
-  ggtitle("Corresponding author position for articles in \nfirst issue of Evolution") +
-  scale_x_continuous(breaks=c(2001,2006,2011,2016)) +
-  scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442","#0072B2")) +
-  ylab("Percent")
-
-timecorrlineplotevol <- timesummaryevol %>%
-  filter(Year>2000) %>%
-  mutate(Correspondence = as.character(Correspondence)) %>%
-  mutate(Correspondence = factor(Correspondence, levels=c("first","middle","last","ND","all","other"))) %>%
-  ggplot(aes(x=Year,y=rel.freq,color= Correspondence)) +
-  geom_line(stat='identity',aes(linetype=Correspondence),size=1) +
-  geom_point(aes(shape=Correspondence), size=4) +
-  ggtitle("Corresponding author position for articles in \nfirst issue of Evolution") +
-  scale_x_continuous(breaks=c(2001,2006,2011,2016)) +
-  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73", "#000000","#0072B2")) +
-  ylab("Percent") +
-  ylim(0,100)
-
-twopanellineplot <- ggdraw() +
-  draw_plot(timecorrlineplotecol,0,0.5,1.0,0.5) +
-  draw_plot(timecorrlineplotevol,0,0,1.0,0.5) 
-
-twopanellineplot
-
-save_plot("timecorrlineplotecol.jpg", timecorrlineplotecol, base_width = 8, base_height = 4)
-save_plot("timecorrlineplotevol.jpg", timecorrlineplotevol, base_width = 8, base_height = 4)
-```
-
-```{r, time plot for AmNat}
-timesummaryamnat <- timedata %>%
-  filter(Journal == c("AmNat")) %>%
-  group_by(Year,Correspondence) %>%
-  summarise(n=n()) %>%
-  mutate(rel.freq = round(100 * n/sum(n), 0))
-
-timesummaryamnat$Year <- as.numeric(timesummaryamnat$Year)
-
-Year = c(2001,2001,2006,2006,2011,2011,2011,2011,2016,2016,2016,2016)
-Correspondence = c("ND","middle","ND","last","ND","middle","all","other","ND","middle","all","other")
-n = c(0,0,0,0,0,0,0,0,0,0,0,0)
-rel.freq = c(0,0,0,0,0,0,0,0,0,0,0,0)
-
-missingdf4 <- data.frame(Year, Correspondence, n, rel.freq)
-timesummaryamnat <- bind_rows(timesummaryamnat,missingdf4)
-
-timecorrlineplotamnat <- timesummaryamnat %>%
-  filter(Year>2000) %>%
-  mutate(Correspondence = as.character(Correspondence)) %>%
-  mutate(Correspondence = factor(Correspondence, levels=c("first","middle","last","ND","all","other"))) %>%
-  ggplot(aes(x=Year,y=rel.freq,color= Correspondence)) +
-  geom_line(stat='identity',aes(linetype=Correspondence),size=1) +
-  geom_point(aes(shape=Correspondence), size=4) +
-  ggtitle("Corresponding author position for articles in \nfirst and second issues of American Naturalist") +
-  scale_x_continuous(breaks=c(2001,2006,2011,2016)) +
-  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73", "#000000","#0072B2")) +
-  ylab("Percent") +
-  ylim(0,100)
-
-threepanellineplot <- ggdraw() +
-  draw_plot(timecorrlineplotecol,0,0.67,1.0,0.33) +
-  draw_plot(timecorrlineplotamnat,0,0.33,1.0,0.33) +
-  draw_plot(timecorrlineplotevol,0,0,1.0,0.33) 
-
-save_plot("threepanellineplot.jpg", threepanellineplot, base_width = 8, base_height = 12)
-```
-
-```{r, time plot for Oikos}
-timesummaryoikos <- timedata %>%
-  filter(Journal == c("Oikos")) %>%
-  filter(Correspondence != "NA") %>%
-  group_by(Year,Correspondence) %>%
-  summarise(n=n()) %>%
-  mutate(rel.freq = round(100 * n/sum(n), 0))
-
-timesummaryoikos$Year <- as.numeric(timesummaryoikos$Year)
-
-Year = c(2001,2001,2006,2006,2006,2011,2011,2011,2011,2016,2016,2016,2016)
-Correspondence = c("all","other","other","ND","all","ND","middle","all","other","ND","last","all","other")
-n = c(0,0,0,0,0,0,0,0,0,0,0,0,0)
-rel.freq = c(0,0,0,0,0,0,0,0,0,0,0,0,0)
-
-missingdf5 <- data.frame(Year, Correspondence, n, rel.freq)
-timesummaryoikos <- bind_rows(timesummaryoikos,missingdf5)
-
-timecorrlineplotoikos <- timesummaryoikos %>%
-  filter(Year>2000) %>%
-  mutate(Correspondence = as.character(Correspondence)) %>%
-  mutate(Correspondence = factor(Correspondence, levels=c("first","middle","last","ND","all","other"))) %>%
-  ggplot(aes(x=Year,y=rel.freq,color= Correspondence)) +
-  geom_line(stat='identity',aes(linetype=Correspondence),size=1) +
-  geom_point(aes(shape=Correspondence), size=4) +
-  ggtitle("Corresponding author position for articles in \nJanuary issue of Oikos") +
-  scale_x_continuous(breaks=c(2001,2006,2011,2016)) +
-  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73", "#000000","#0072B2")) +
-  ylab("Percent") +
-  ylim(0,100)
-
-fourpanellineplot <- ggdraw() +
-  draw_plot(timecorrlineplotecol,0,0.75,1.0,0.25) +
-  draw_plot(timecorrlineplotamnat,0,0.50,1.0,0.25) +
-  draw_plot(timecorrlineplotevol,0,0.25,1.0,0.25) +
-  draw_plot(timecorrlineplotoikos,0,0,1.0,0.25)
-
-save_plot("fourpanellineplot.jpg", fourpanellineplot, base_width = 8, base_height = 13)
-```
-
-```{r, 2016 corresponding authorship summary}
-corr2016summary <- timedata %>%
-  filter(Year > 2015) %>%
-  group_by(Correspondence) %>%
-  summarise(n=n()) %>%
-  mutate(rel.freq = round(100 * n/sum(n), 0))
-```
-
-## REVISIONS, Using Web of Science Data
-
-```{r, using data from Web of Science to at number authors over time}
-library(stringr)
-#WoSdata <- read.csv("WoSAuthorshipData.csv")
-
-#WoSdata$numberauthors <- (str_count(WoSdata$AU, ";") +1)
-#WoSdata$numberemails <- (str_count(WoSdata$EM, ";") +1)
-
-#write.csv(WoSdata, file = "WoSdata.csv")
-
-## moved out of R to do some manipulations, now moving back in
-
-WoSdata <- read.csv("WoSdata2.csv")
-WoSdata <- subset(WoSdata, DT == "Article"| DT == "Article; Data Paper" | DT == "Article; Proceedings Paper" | DT == "Review")
-
-newtimeplot <- WoSdata %>%
-  filter(Journal == c("Ecology")) %>%
-  ggplot(aes(x=Year,y=numberauthors,fill=Journal,group=interaction(Journal,Year))) +
-  scale_fill_manual(values=c("white","#999999")) +
-  geom_boxplot(width=4) +
-  theme_bw() + 
-  ggtitle("Number of authors of articles in Ecology, 1956-2016") +
-  theme(plot.title = element_text(hjust = 0.5)) +
-  scale_x_continuous(breaks=c(1956,1966,1976,1986,1996,2006,2016)) +
-  ylab("Number of authors") 
-
-newtimeplot
-
-save_plot("newtimeplot.jpg", newtimeplot, base_width = 6, base_height = 4)
-
-newtimeplotalljournals <- WoSdata %>%
-  filter(Year>2000) %>%
-  ggplot(aes(x=Year,y=numberauthors,fill=Journal,group=interaction(Journal,Year))) +
-  scale_fill_manual(values=c("white","#999999","#F0E442","#56B4E9")) +
-  geom_boxplot(width=4) +
-  theme_bw() + 
-  ggtitle("Number of authors per article, 2001-2016") +
-  theme(plot.title = element_text(hjust = 0.5)) +
-  scale_x_continuous(breaks=c(2001,2006,2011,2016)) +
-  ylab("Number of authors") 
-
-newtimeplotalljournals
-
-
-save_plot("newtimeplotalljournals.jpg", newtimeplotalljournals, base_width = 6, base_height = 4)
-
-#combine plot with just ecology for all years with plot for all journals for 2001-2016
-newtimeplotgrid2panel <- plot_grid(newtimeplot, newtimeplotalljournals, 
-                            labels = c("A", "B"), ncol = 1, nrow = 2,
-                            rel_heights = c(0.5, 0.5))
-
-save_plot("newtimeplotgrid2panel.jpg", newtimeplotgrid2panel, base_width = 8, base_height = 8)
-
-ecologyWoSdata <- subset(WoSdata, Journal == "Ecology")
-
-ecologyfit <-  glm(numberauthors ~ Year, family = poisson(), data = ecologyWoSdata)
-summary(ecologyfit)
-
-recentWoSdata <- subset(WoSdata, Year > 2000)
-
-recentfit <-  glm(numberauthors ~ Year + Journal + Year*Journal, family = poisson(), data = recentWoSdata)
-summary(recentfit)
-
-recentfitnointeraction <- glm(numberauthors ~ Year + Journal, family = poisson(), data = recentWoSdata)
-
-anova(recentfit,recentfitnointeraction, test="Chi")
-
-recentfitnojournal <- glm(numberauthors ~ Year, family = poisson(), data = recentWoSdata)
-
-anova(recentfitnojournal,recentfitnointeraction, test="Chi")
-
-### Still to do: add stats in to manuscript
-```
-
-```{r, using WoS data to look at corresponding authorship over time}
-###Important note: original WoS data was inaccurate for 2001 for all journals (lots of papers without email addresses when there was one on the actual article) and for 2006 for AmNat (lots of papers with "all" email addresses, when most of those papers had one designated for correspondence). So, I manually went through the first 900 pages of each journal in 2001 (and in 2006 for AmNat) to record authorship. I did not record the number of authors while doing this, so this dataset below (with "Corresponding" at the end) cannot be used to make a figure related to number of authors.
-
-WoSdataCor <- read.csv("WoSdataCorresponding.csv")
-WoSdataCor <- subset(WoSdataCor, DT == "article" | DT == "Article"| DT == "Article; Data Paper" | DT == "Article; Proceedings Paper" | DT == "brief communication" | DT == "briefcomm" | DT == "comment" | DT == "e-article" | DT == "forum" | DT == "letter" | DT == "nathistmisc" | DT == "note" | DT == "Note" | DT == "opinion" | DT == "perspective" | DT == "report" | DT == "review" | DT == "Review" | DT == "synthesis")
-
-recentWoSdataCor <- subset(WoSdataCor, Year > 2000)
-
-newtimesummary <- recentWoSdataCor %>%
-  filter(Correspondence != "unknown") %>%
-  group_by(Journal, Year,Correspondence) %>%
-  summarise(n=n()) %>%
-  mutate(rel.freq = round(100 * n/sum(n), 0))
-
-Journal = c("AmNat","AmNat","AmNat","AmNat","AmNat","AmNat","Ecology","Ecology","Ecology","Ecology","Ecology","Ecology","Ecology","Ecology","Ecology","Evolution","Evolution","Oikos","Oikos","Oikos","Oikos","Oikos","Oikos","Oikos","Oikos","Oikos","Oikos")
-Year = c(2001,2001,2011,2011,2016,2016,2001,2001,2006,2006,2011,2011,2016,2016,2016,2006,2016,2001,2001,2006,2006,2011,2011,2011,2016,2016,2016)
-Correspondence = c("middle","ND","all","ND","all","ND","all","other","all","other","all","other","all","ND","other","ND","ND","all","other","all","ND","all","other","ND","all","other","ND")
-n = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)   
-rel.freq = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
-
-missingdfnew <- data.frame(Journal, Year, Correspondence, n, rel.freq)
-newtimesummary <- bind_rows(newtimesummary,missingdfnew)
-
-newtimesummaryamnat <- newtimesummary %>%
-  filter(Journal == c("AmNat")) 
-
-newtimecorrlineplotamnat <- newtimesummaryamnat %>%
-  filter(Year>2000) %>%
-  mutate(Correspondence = as.character(Correspondence)) %>%
-  mutate(Correspondence = factor(Correspondence, levels=c("first","middle","last","ND","all","other"))) %>%
-  ggplot(aes(x=Year,y=rel.freq,color= Correspondence)) +
-  geom_line(stat='identity',aes(linetype=Correspondence),size=1) +
-  geom_point(aes(shape=Correspondence), size=4) +
-  ggtitle("American Naturalist") +
-  scale_x_continuous(breaks=c(2001,2006,2011,2016)) +
-  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73", "#000000","#0072B2")) +
-  ylab("Percent") +
-  ylim(0,100)
-
-newtimesummaryecol <- newtimesummary %>%
-  filter(Journal == c("Ecology")) 
-
-newtimecorrlineplotecol <- newtimesummaryecol %>%
-  filter(Year>2000) %>%
-  mutate(Correspondence = as.character(Correspondence)) %>%
-  mutate(Correspondence = factor(Correspondence, levels=c("first","middle","last","ND","all","other"))) %>%
-  ggplot(aes(x=Year,y=rel.freq,color= Correspondence)) +
-  geom_line(stat='identity',aes(linetype=Correspondence),size=1) +
-  geom_point(aes(shape=Correspondence), size=4) +
-  ggtitle("Ecology") +
-  scale_x_continuous(breaks=c(2001,2006,2011,2016)) +
-  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73", "#000000","#0072B2")) +
-  ylab("Percent") +
-  ylim(0,100)
-
-newtimesummaryevol <- newtimesummary %>%
-  filter(Journal == c("Evolution")) 
-
-newtimecorrlineplotevol <- newtimesummaryevol %>%
-  filter(Year>2000) %>%
-  mutate(Correspondence = as.character(Correspondence)) %>%
-  mutate(Correspondence = factor(Correspondence, levels=c("first","middle","last","ND","all","other"))) %>%
-  ggplot(aes(x=Year,y=rel.freq,color= Correspondence)) +
-  geom_line(stat='identity',aes(linetype=Correspondence),size=1) +
-  geom_point(aes(shape=Correspondence), size=4) +
-  ggtitle("Evolution") +
-  scale_x_continuous(breaks=c(2001,2006,2011,2016)) +
-  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73", "#000000","#0072B2")) +
-  ylab("Percent") +
-  ylim(0,100)
-
-newtimesummaryoikos <- newtimesummary %>%
-  filter(Journal == c("Oikos")) 
-
-newtimecorrlineplotoikos <- newtimesummaryoikos %>%
-  filter(Year>2000) %>%
-  mutate(Correspondence = as.character(Correspondence)) %>%
-  mutate(Correspondence = factor(Correspondence, levels=c("first","middle","last","ND","all","other"))) %>%
-  ggplot(aes(x=Year,y=rel.freq,color= Correspondence)) +
-  geom_line(stat='identity',aes(linetype=Correspondence),size=1) +
-  geom_point(aes(shape=Correspondence), size=4) +
-  ggtitle("Oikos") +
-  scale_x_continuous(breaks=c(2001,2006,2011,2016)) +
-  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9", "#009E73", "#000000","#0072B2")) +
-  ylab("Percent") +
-  ylim(0,100)
-
-newfourpanellineplot <- ggdraw() +
-  draw_plot(newtimecorrlineplotamnat,0,0.75,1.0,0.25) +
-  draw_plot(newtimecorrlineplotecol,0,0.50,1.0,0.25) +
-  draw_plot(newtimecorrlineplotevol,0,0.25,1.0,0.25) +
-  draw_plot(newtimecorrlineplotoikos,0,0,1.0,0.25)
-
-save_plot("newfourpanellineplot.jpg", newfourpanellineplot, base_width = 8, base_height = 13)
-
-
-#still to do: stats (including adding those into manuscript)
-#step 1: make corresponding first author into a binary variable, analyze that to look at differences in that between journals and across time.
+## COMPARING TO OUTPUT OF ONE BIG MODEL (note: This model isn't quite the right form, because I'm making the ordinal variables into factors, but want to see if there's general consistency in the approaches)
+fullmodelfit2 <- glm(FullResYes ~ factor(PhD01) + WhereLive + ecoevo + factor(Dept01), family = binomial(link="logit"), data = polldata)
+summary(fullmodelfit2)
 ```
