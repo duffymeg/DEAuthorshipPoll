@@ -130,6 +130,14 @@ newtimesummary <- recentWoSdataCor %>%
   summarise(n=n()) %>%
   mutate(rel.freq = round(100 * n/sum(n), 0))
 
+# summary statistics for 2016 (averaged across all papers; see newtimesummary for stats broken down by journal)
+recentWoSdataCor %>%
+  filter(Correspondence != "unknown") %>%
+  filter(Year == 2016) %>%
+  group_by(Correspondence) %>%
+  summarise(n=n()) %>%
+  mutate(rel.freq = round(100 * n/sum(n), 0))
+
 Journal = c("AmNat","AmNat","AmNat","AmNat","AmNat","AmNat","Ecology","Ecology","Ecology","Ecology","Ecology","Ecology","Ecology","Ecology","Ecology","Evolution","Evolution","Oikos","Oikos","Oikos","Oikos","Oikos","Oikos","Oikos","Oikos","Oikos","Oikos")
 Year = c(2001,2001,2011,2011,2016,2016,2001,2001,2006,2006,2011,2011,2016,2016,2016,2006,2016,2001,2001,2006,2006,2011,2011,2011,2016,2016,2016)
 Correspondence = c("middle","ND","all","ND","all","ND","all","other","all","other","all","other","all","ND","other","ND","ND","all","other","all","ND","all","other","ND","all","other","ND")
@@ -261,6 +269,207 @@ anova(lastcorrfitnojournal,lastcorrfitnointeraction, test="Chi")
 lastcorrfitnoyear <- glm(LastCor01 ~ Journal, family = binomial(), data = recentWoSdataCor)
 
 anova(lastcorrfitnoyear,lastcorrfitnointeraction, test="Chi")
+```
+
+```{r, looking at what covaries with corresponding authorship in the literature}
+# import new data set that combines information on corresponding author position with information on where the reprint author lives (lined these up in excel; original files downloaded from WoS didn't have reprint author addresses in all cases)
+# did this just using 2016 data, since interested in current practices for this
+
+#WoSdata2016 <- read.csv("WoSdata2016.csv")
+#WoSdata2016 <- subset(WoSdata2016, DT == "Article" | DT == "Article; Data Paper" | DT == "Review")
+
+#WoSdata2016$Cor01 <- ifelse(WoSdata2016$Correspondence=="first",1,0)
+
+# I don't think this required the stringi package and have deleted the line of code loading that. If this is broken in the future, that would be a place to start trouble-shooting
+#WoSdata2016$Country <- word(WoSdata2016$RP, -1)
+
+#WoSdata2016$Country <- as.factor(WoSdata2016$Country)
+
+## moving it out to excel to check things and put into regions
+#write.csv(WoSdata2016, file = "WoSdata2016Country.csv")
+
+WoSdata2016Regions <- read.csv("WoSdata2016CountryRegion.csv")
+WoSdata2016Regions$LastCor01 <- ifelse(WoSdata2016Regions$Correspondence=="last",1,0)
+WoSdata2016Regions$Cor01 <- ifelse(WoSdata2016Regions$Correspondence=="first",1,0)
+
+WoSdata2016EurNA <- subset(WoSdata2016Regions, Region == "Europe" | Region == "North America")
+
+WoSdata2016RegionsEnough <- subset(WoSdata2016Regions, Region == "Europe" | Region == "North America" | Region == "Asia" | Region == "Oceania")
+
+
+####
+# Note: there are several different columns related to "region", since it's not clear whether it makes more sense to go based on continents or more based on cultural differences (e.g., should there be a Latin America region, or should those countries be divided between North America and South America, based on continental plates?) One option was to go with World Bank regions, but that combined Oceania & Asia, which didn't seem to make as much sense from a scientific culture perspective. In the end, I decided to stick with regions that mostly correspond to continents (with the exception being that New Zealand is included with Australia in "Oceania".)
+
+####
+regionsummarylast <- WoSdata2016Regions %>%
+  group_by(Region,LastCor01) %>%
+  summarise(n=n()) %>%
+  mutate(rel.freq = round(100 * n/sum(n), 0))
+
+regionsummarylast
+
+regionsummaryfirst <- WoSdata2016Regions %>%
+  group_by(Region,Cor01) %>%
+  summarise(n=n()) %>%
+  mutate(rel.freq = round(100 * n/sum(n), 0))
+
+regionsummaryfirst
+
+# created a table manually in excel
+authorshiptableregion <- read.csv("authorshiptableregion.csv")
+
+regionplot <- authorshiptableregion %>%
+  ggplot(aes(x=Region.short,y=rel.freq,color=Correspondence,fill=Correspondence)) +
+  geom_bar(stat="identity",position=position_dodge()) +
+  ylab("Percentage of corresponding authors \nwho are first or last author") +
+  xlab("Region") +
+  ggtitle("Analysis of corresponding authorship of papers published in 2016 \nin American Naturalist, Ecology, Evolution, and Oikos") +
+  annotate("text", x = 1, y = 105, label = "n = 10", size=3.5) +
+  annotate("text", x = 2, y = 105, label = "n = 52", size=3.5) +
+  annotate("text", x = 3, y = 105, label = "n = 296", size=3.5) +
+  annotate("text", x = 4, y = 105, label = "n = 438", size=3.5) +
+  annotate("text", x = 5, y = 105, label = "n = 70", size=3.5) +
+  annotate("text", x = 6, y = 105, label = "n = 25", size=3.5) +
+  scale_color_manual(values=c("#999999", "#56B4E9")) +
+  scale_fill_manual(values=c("#999999", "#56B4E9")) 
+
+regionplot
+
+regionfitlastEurNA <-  glm(LastCor01 ~ Region, family = binomial(link=logit), data = WoSdata2016EurNA)
+summary(regionfitlastEurNA)
+
+regionfitfirstEurNA <-  glm(Cor01 ~ Region, family = binomial(link=logit), data = WoSdata2016EurNA)
+summary(regionfitfirstEurNA)
+
+regionfitlastenough <-  glm(LastCor01 ~ Region, family = binomial(link=logit), data = WoSdata2016RegionsEnough)
+summary(regionfitlastenough)
+
+regionfitfirstenough <-  glm(Cor01 ~ Region, family = binomial(link=logit), data = WoSdata2016RegionsEnough)
+summary(regionfitfirstenough)
+```
+
+```{r, now looking at how number of authors relates to first and last corresponding authorship}
+# First, getting rid of papers with only 1 author because there's no potential for last authorship there (based on my definition of last authorship)
+WoSdata2016RegionsNot1 <- subset(WoSdata2016Regions, numberauthors>1)
+
+## Looking at things related to numbers of authors:
+numberauthorfitfirstordered <-  glm(Cor01 ~ ordered(binnedauthors), family = binomial(link="logit"), data = WoSdata2016RegionsNot1)
+summary(numberauthorfitfirstordered)
+
+numberauthorfitlastordered <-  glm(LastCor01 ~ ordered(binnedauthors), family = binomial(link="logit"), data = WoSdata2016RegionsNot1)
+summary(numberauthorfitlastordered)
+
+#What if bin from 7 authors & up (vs. 10 & up, which previous analysis did)
+numberauthorfitfirstordered7 <-  glm(Cor01 ~ ordered(binnedauthors7), family = binomial(link="logit"), data = WoSdata2016RegionsNot1)
+summary(numberauthorfitfirstordered7)
+
+numberauthorfitlastordered7 <-  glm(LastCor01 ~ ordered(binnedauthors7), family = binomial(link="logit"), data = WoSdata2016RegionsNot1)
+summary(numberauthorfitlastordered7)
+
+
+
+numberauthorcorrplot <- WoSdata2016Regions %>%
+  ggplot(aes(x=numberauthors,y=Cor01)) +
+  geom_point(alpha=0.1) +
+  ggtitle("Number of authors vs. last author as corresponding author") +
+  ylab("Is the last author the corresponding author?") 
+
+numberauthorcorrplot
+
+numberauthorsummary <- WoSdata2016Regions %>%
+  group_by(binnedauthors) %>%
+  summarise(n=n()) 
+
+numberauthorsummary
+
+WoSdata2016Regions %>%
+  group_by(binnedauthors) %>%
+  summarise(n=n())
+
+numberauthorsummarylast <- WoSdata2016Regions %>%
+  group_by(binnedauthors,LastCor01) %>%
+  summarise(n=n()) %>%
+  mutate(rel.freq = round(100 * n/sum(n), 0))
+
+numberauthorsummarylast
+
+numberauthorsummaryfirst <- WoSdata2016Regions %>%
+  group_by(binnedauthors,Cor01) %>%
+  summarise(n=n()) %>%
+  mutate(rel.freq = round(100 * n/sum(n), 0))
+
+numberauthorsummaryfirst
+
+# Now with 7+ instead of 10+ as the break
+numberauthorsummarylast7 <- WoSdata2016Regions %>%
+  group_by(binnedauthors7,LastCor01) %>%
+  summarise(n=n()) %>%
+  mutate(rel.freq = round(100 * n/sum(n), 0))
+
+numberauthorsummarylast7
+
+numberauthorsummaryfirst7 <- WoSdata2016Regions %>%
+  group_by(binnedauthors7,Cor01) %>%
+  summarise(n=n()) %>%
+  mutate(rel.freq = round(100 * n/sum(n), 0))
+
+numberauthorsummaryfirst7
+
+# created a table manually in excel
+authorshiptable <- read.csv("authorshiptable.csv")
+
+authorshiptable$Numberauthors <- factor(authorshiptable$Numberauthors, 
+                                     c("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10+"))
+
+authorshiptable$Numberauthors7 <- factor(authorshiptable$Numberauthors7, 
+                                     c("0", "1", "2", "3", "4", "5", "6", "7+"))
+
+numberauthorscorrplotv2 <- authorshiptable %>%
+  ggplot(aes(x=Numberauthors,y=rel.freq,color=Correspondence,fill=Correspondence)) +
+  geom_bar(stat="identity",position=position_dodge()) +
+  ylab("Percentage of corresponding authors \nwho are first or last author") +
+  xlab("Number of authors") +
+  annotate("text", x = 1, y = 105, label = "48", size=3.5) +
+  annotate("text", x = 2, y = 105, label = "196", size=3.5) +
+  annotate("text", x = 3, y = 105, label = "185", size=3.5) +
+  annotate("text", x = 4, y = 105, label = "150", size=3.5) +
+  annotate("text", x = 5, y = 105, label = "114", size=3.5) +
+  annotate("text", x = 6, y = 105, label = "74", size=3.5) +
+  annotate("text", x = 7, y = 105, label = "45", size=3.5) +
+  annotate("text", x = 8, y = 105, label = "23", size=3.5) +
+  annotate("text", x = 9, y = 105, label = "11", size=3.5) +
+  annotate("text", x = 10, y = 105, label = "45", size=3.5) +
+  scale_color_manual(values=c("#999999", "#56B4E9")) +
+  scale_fill_manual(values=c("#999999", "#56B4E9")) 
+
+numberauthorscorrplotv2
+
+numberauthorscorrplotv7 <- authorshiptable %>%
+  ggplot(aes(x=Numberauthors,y=rel.freq,color=Correspondence,fill=Correspondence)) +
+  geom_bar(stat="identity",position=position_dodge()) +
+  ylab("Percentage of corresponding authors \nwho are first or last author") +
+  xlab("Number of authors") +
+  annotate("text", x = 1, y = 105, label = "48", size=3.5) +
+  annotate("text", x = 2, y = 105, label = "196", size=3.5) +
+  annotate("text", x = 3, y = 105, label = "185", size=3.5) +
+  annotate("text", x = 4, y = 105, label = "150", size=3.5) +
+  annotate("text", x = 5, y = 105, label = "114", size=3.5) +
+  annotate("text", x = 6, y = 105, label = "74", size=3.5) +
+  annotate("text", x = 7, y = 105, label = "124", size=3.5) +
+  scale_color_manual(values=c("#999999", "#56B4E9")) +
+  scale_fill_manual(values=c("#999999", "#56B4E9")) 
+
+numberauthorscorrplotv7
+
+
+```
+
+```{r, combined plot using WoS data to look at regional diffs and effects of number of authors}
+WoSCorrespondencePlot <- plot_grid(regionplot, numberauthorscorrplotv2, labels = c("A", "B"), nrow = 2, align = "v")
+
+WoSCorrespondencePlot
+
+save_plot("WoSCorrespondencePlot.jpg", WoSCorrespondencePlot, base_width = 8, base_height = 12)
 ```
 
 ## The poll
@@ -705,7 +914,7 @@ depttypelikertplot = plot(likert_32) +
             size=3, colour="black", hjust=1) +
   scale_y_continuous(limits=c(-100,150)) +
   coord_flip(ylim=c(-110,110)) +
-  theme(plot.margin=unit(c(0.2,2,0.2,0.2),"cm")) + theme(legend.position = "none")
+  theme(plot.margin=unit(c(0.2,2,0.2,0.2),"cm")) 
 
 depttypelikertplot <- ggplot_gtable(ggplot_build(depttypelikertplot))
 depttypelikertplot$layout$clip <- "off"
@@ -713,22 +922,6 @@ depttypelikertplot.mpg <- plot(depttypelikertplot)
 
 plot(depttypelikertplot)
 
-counts = lastdata_grouping %>%
-  count(BasicApplied) %>%
-  mutate(variable=NA)
-
-colnames(lastdata)[1] <- "Basic v. Applied"
-likert_42 <- likert(lastdata, grouping = lastdata_grouping$BasicApplied)
-basicappliedlikertplot = plot(likert_42) + 
-  geom_text(data=counts,
-            aes(label=format(n,big.mark=","), x=BasicApplied, y=145), 
-            size=3, colour="black", hjust=1) +
-  scale_y_continuous(limits=c(-100,150)) +
-  coord_flip(ylim=c(-110,110)) +
-  theme(plot.margin=unit(c(0.2,2,0.2,0.2),"cm")) + theme(legend.position = "none")
-
-basicappliedlikertplot <- ggplot_gtable(ggplot_build(basicappliedlikertplot))
-basicappliedlikertplot$layout$clip <- "off"
 
 counts = lastdata_grouping %>%
   count(PrimaryResearch) %>%
@@ -781,29 +974,15 @@ wherelivelikertplot = plot(likert_22) +
 wherelivelikertplot <- ggplot_gtable(ggplot_build(wherelivelikertplot))
 wherelivelikertplot$layout$clip <- "off"
 
-counts = lastdata_grouping %>%
-  count(Interdisciplinary) %>%
-  mutate(variable=NA)
 
-colnames(lastdata)[1] <- "Frequency of interdisciplinary research"
-likert_72 <- likert(lastdata, grouping = lastdata_grouping$Interdisciplinary)
-interdisciplinarylikertplot = plot(likert_72) + 
-  geom_text(data=counts,
-            aes(label=format(n,big.mark=","), x=Interdisciplinary, y=145), 
-            size=3, colour="black", hjust=1) +
-  scale_y_continuous(limits=c(-100,150)) +
-  coord_flip(ylim=c(-110,110)) +
-  theme(plot.margin=unit(c(0.2,2,0.2,0.2),"cm")) 
+lastplotgrid4panel <- plot_grid(yearslikertplot, wherelivelikertplot, primaryresearchlikertplot, depttypelikertplot, 
+                            labels = c("A", "B", "C", "D"), ncol = 1, nrow = 4,
+                            rel_heights = c(0.25, 0.25, 0.25, 0.25))
 
-interdisciplinarylikertplot <- ggplot_gtable(ggplot_build(interdisciplinarylikertplot))
-interdisciplinarylikertplot$layout$clip <- "off"
+save_plot("lastplotgrid4panel.jpg", lastplotgrid4panel, base_width = 9, base_height = 9)
 
+lastplotgrid4panel
 
-lastplotgrid6panel <- plot_grid(yearslikertplot, wherelivelikertplot, primaryresearchlikertplot, depttypelikertplot, basicappliedlikertplot, interdisciplinarylikertplot, 
-                            labels = c("A", "B", "C", "D", "E", "F"), ncol = 1, nrow = 6,
-                            rel_heights = c(0.20, 0.2, 0.2, 0.15, 0.12, 0.23))
-
-save_plot("lastplotgrid6panel.jpg", lastplotgrid6panel, base_width = 9, base_height = 15)
 ```
 
 ```{r, stats related to views on last authorship}
