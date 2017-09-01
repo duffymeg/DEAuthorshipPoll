@@ -82,6 +82,20 @@ newtimeplotgrid2panel
 save_plot("newtimeplotgrid2panel.jpg", newtimeplotgrid2panel, base_width = 8, base_height = 8)
 ```
 
+```{r, checking colorblind friendliness of that figure}
+#library(devtools)
+
+#devtools::install_github("wilkelab/cowplot")
+#install.packages("colorspace", repos = "http://R-Forge.R-project.org")
+
+#devtools::install_github("clauswilke/colorblindr")
+
+library(colorblindr)
+cvd_grid(newtimeplotalljournals)
+
+```
+
+
 ```{r, stats for data on number of authors over time}
 ecologyWoSdata <- subset(WoSdata, Journal == "Ecology")
 
